@@ -90,7 +90,7 @@ def generate_construction_plan(conditions_json_path, dxf_output_path):
         # 进度条
         bar_w = int(s["days"] / total_days * 400)
         bar_color = 2  # 黄色
-        msp.add_solid_face(
+        msp.add_solid(
             [(200, y), (200+bar_w, y), (200+bar_w, y+15), (200, y+15)],
             dxfattribs={"layer": "施工-进度计划"}
         )
@@ -159,3 +159,4 @@ if __name__ == "__main__":
     r, j = generate_construction_plan(inp, out)
     print("DXF:", r)
     print("JSON:", j)
+

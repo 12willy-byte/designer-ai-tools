@@ -141,3 +141,4 @@ if __name__ == "__main__":
     os.makedirs(os.path.dirname(out), exist_ok=True)
     r = generate_ceiling_plan(inp, out)
     print("OK:", r)
+
