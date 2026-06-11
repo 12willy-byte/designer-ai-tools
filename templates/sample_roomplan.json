@@ -1,0 +1,688 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-06-12",
+  "surfaces": [
+    {
+      "identifier": "wall-L-1",
+      "category": "wall",
+      "dimensions": {
+        "x": 6000,
+        "y": 2800
+      },
+      "transform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "parentIdentifier": null
+    },
+    {
+      "identifier": "wall-L-2",
+      "category": "wall",
+      "dimensions": {
+        "x": 4500,
+        "y": 2800
+      },
+      "transform": [
+        0,
+        0,
+        1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -1,
+        0,
+        0,
+        0,
+        6000,
+        0,
+        0,
+        1
+      ],
+      "parentIdentifier": null
+    },
+    {
+      "identifier": "wall-L-3",
+      "category": "wall",
+      "dimensions": {
+        "x": 6000,
+        "y": 2800
+      },
+      "transform": [
+        -1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1,
+        0,
+        6000,
+        0,
+        4500,
+        1
+      ],
+      "parentIdentifier": null
+    },
+    {
+      "identifier": "wall-L-4",
+      "category": "wall",
+      "dimensions": {
+        "x": 4500,
+        "y": 2800
+      },
+      "transform": [
+        0,
+        0,
+        -1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        4500,
+        1
+      ],
+      "parentIdentifier": null
+    },
+    {
+      "identifier": "window-L-1",
+      "category": "window",
+      "dimensions": {
+        "x": 2400,
+        "y": 1500
+      },
+      "transform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1800,
+        1300,
+        0,
+        1
+      ],
+      "parentIdentifier": "wall-L-1"
+    },
+    {
+      "identifier": "door-L-K",
+      "category": "door",
+      "dimensions": {
+        "x": 900,
+        "y": 2100
+      },
+      "transform": [
+        0,
+        0,
+        -1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        3600,
+        1
+      ],
+      "parentIdentifier": "wall-L-4"
+    },
+    {
+      "identifier": "wall-K-1",
+      "category": "wall",
+      "dimensions": {
+        "x": 3600,
+        "y": 2800
+      },
+      "transform": [
+        0,
+        0,
+        1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "parentIdentifier": null
+    },
+    {
+      "identifier": "wall-K-2",
+      "category": "wall",
+      "dimensions": {
+        "x": 3000,
+        "y": 2800
+      },
+      "transform": [
+        -1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1,
+        0,
+        0,
+        0,
+        3600,
+        1
+      ],
+      "parentIdentifier": null
+    },
+    {
+      "identifier": "wall-K-3",
+      "category": "wall",
+      "dimensions": {
+        "x": 3600,
+        "y": 2800
+      },
+      "transform": [
+        0,
+        0,
+        -1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        -3600,
+        0,
+        3600,
+        1
+      ],
+      "parentIdentifier": null
+    },
+    {
+      "identifier": "window-K-1",
+      "category": "window",
+      "dimensions": {
+        "x": 1800,
+        "y": 1500
+      },
+      "transform": [
+        0,
+        0,
+        -1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        -2700,
+        1300,
+        3600,
+        1
+      ],
+      "parentIdentifier": "wall-K-2"
+    },
+    {
+      "identifier": "wall-B-1",
+      "category": "wall",
+      "dimensions": {
+        "x": 3300,
+        "y": 2800
+      },
+      "transform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        6000,
+        0,
+        4500,
+        1
+      ],
+      "parentIdentifier": null
+    },
+    {
+      "identifier": "wall-B-2",
+      "category": "wall",
+      "dimensions": {
+        "x": 3000,
+        "y": 2800
+      },
+      "transform": [
+        0,
+        0,
+        1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -1,
+        0,
+        0,
+        0,
+        9300,
+        0,
+        4500,
+        1
+      ],
+      "parentIdentifier": null
+    },
+    {
+      "identifier": "wall-B-3",
+      "category": "wall",
+      "dimensions": {
+        "x": 3300,
+        "y": 2800
+      },
+      "transform": [
+        -1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1,
+        0,
+        9300,
+        0,
+        7500,
+        1
+      ],
+      "parentIdentifier": null
+    },
+    {
+      "identifier": "wall-B-4",
+      "category": "wall",
+      "dimensions": {
+        "x": 3000,
+        "y": 2800
+      },
+      "transform": [
+        0,
+        0,
+        -1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        6000,
+        0,
+        7500,
+        1
+      ],
+      "parentIdentifier": null
+    },
+    {
+      "identifier": "window-B-1",
+      "category": "window",
+      "dimensions": {
+        "x": 1500,
+        "y": 1500
+      },
+      "transform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        900,
+        1300,
+        4500,
+        1
+      ],
+      "parentIdentifier": "wall-B-1"
+    },
+    {
+      "identifier": "door-B-WC",
+      "category": "door",
+      "dimensions": {
+        "x": 800,
+        "y": 2100
+      },
+      "transform": [
+        -1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1,
+        0,
+        9000,
+        0,
+        7500,
+        1
+      ],
+      "parentIdentifier": "wall-B-3"
+    },
+    {
+      "identifier": "wall-WC-1",
+      "category": "wall",
+      "dimensions": {
+        "x": 1800,
+        "y": 2800
+      },
+      "transform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        9300,
+        0,
+        7500,
+        1
+      ],
+      "parentIdentifier": null
+    },
+    {
+      "identifier": "wall-WC-2",
+      "category": "wall",
+      "dimensions": {
+        "x": 1500,
+        "y": 2800
+      },
+      "transform": [
+        0,
+        0,
+        1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -1,
+        0,
+        0,
+        0,
+        11100,
+        0,
+        7500,
+        1
+      ],
+      "parentIdentifier": null
+    },
+    {
+      "identifier": "wall-WC-3",
+      "category": "wall",
+      "dimensions": {
+        "x": 1800,
+        "y": 2800
+      },
+      "transform": [
+        -1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1,
+        0,
+        11100,
+        0,
+        9000,
+        1
+      ],
+      "parentIdentifier": null
+    },
+    {
+      "identifier": "wall-WC-4",
+      "category": "wall",
+      "dimensions": {
+        "x": 1500,
+        "y": 2800
+      },
+      "transform": [
+        0,
+        0,
+        -1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        9300,
+        0,
+        9000,
+        1
+      ],
+      "parentIdentifier": null
+    },
+    {
+      "identifier": "window-WC-1",
+      "category": "window",
+      "dimensions": {
+        "x": 600,
+        "y": 900
+      },
+      "transform": [
+        0,
+        0,
+        1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -1,
+        0,
+        0,
+        0,
+        10500,
+        1600,
+        7500,
+        1
+      ],
+      "parentIdentifier": "wall-WC-2"
+    },
+    {
+      "identifier": "beam-L-1",
+      "category": "beam",
+      "dimensions": {
+        "x": 300,
+        "y": 400
+      },
+      "transform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        2400,
+        1500,
+        1
+      ],
+      "parentIdentifier": null
+    },
+    {
+      "identifier": "column-L-1",
+      "category": "column",
+      "dimensions": {
+        "x": 400,
+        "y": 400
+      },
+      "transform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3000,
+        0,
+        2000,
+        1
+      ],
+      "parentIdentifier": null
+    }
+  ],
+  "rooms": [
+    {
+      "identifier": "room-L",
+      "category": "room",
+      "displayName": "客厅",
+      "surfaces": [
+        "wall-L-1",
+        "wall-L-2",
+        "wall-L-3",
+        "wall-L-4"
+      ],
+      "dimensions": {
+        "x": 6000,
+        "y": 4500
+      }
+    },
+    {
+      "identifier": "room-K",
+      "category": "room",
+      "displayName": "厨房",
+      "surfaces": [
+        "wall-K-1",
+        "wall-K-2",
+        "wall-K-3"
+      ],
+      "dimensions": {
+        "x": 3600,
+        "y": 3600
+      }
+    },
+    {
+      "identifier": "room-B",
+      "category": "room",
+      "displayName": "主卧",
+      "surfaces": [
+        "wall-B-1",
+        "wall-B-2",
+        "wall-B-3",
+        "wall-B-4"
+      ],
+      "dimensions": {
+        "x": 3300,
+        "y": 3000
+      }
+    },
+    {
+      "identifier": "room-WC",
+      "category": "room",
+      "displayName": "卫生间",
+      "surfaces": [
+        "wall-WC-1",
+        "wall-WC-2",
+        "wall-WC-3",
+        "wall-WC-4"
+      ],
+      "dimensions": {
+        "x": 1800,
+        "y": 1500
+      }
+    }
+  ]
+}
