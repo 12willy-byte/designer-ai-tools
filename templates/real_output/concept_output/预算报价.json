@@ -1,0 +1,174 @@
+{
+  "total_area_m2": 56.8,
+  "total_budget": 64326,
+  "categories": {
+    "拆改工程": {
+      "items": [
+        {
+          "name": "拆墙",
+          "qty": 9.100500000000002,
+          "unit": "m2",
+          "price": 45,
+          "total": 410
+        },
+        {
+          "name": "垃圾清运",
+          "qty": 1,
+          "unit": "项",
+          "price": 2000,
+          "total": 2000
+        }
+      ],
+      "total": 2410
+    },
+    "水电工程": {
+      "items": [
+        {
+          "name": "水电改造",
+          "qty": 56.8,
+          "unit": "m2",
+          "price": 180,
+          "total": 10224
+        },
+        {
+          "name": "开关插座安装",
+          "qty": 60,
+          "unit": "个",
+          "price": 15,
+          "total": 900
+        }
+      ],
+      "total": 11124
+    },
+    "泥瓦工程": {
+      "items": [
+        {
+          "name": "防水工程",
+          "qty": 40,
+          "unit": "m2",
+          "price": 65,
+          "total": 2600
+        },
+        {
+          "name": "地砖铺贴",
+          "qty": 56.8,
+          "unit": "m2",
+          "price": 75,
+          "total": 4260
+        },
+        {
+          "name": "墙砖铺贴",
+          "qty": 54.603,
+          "unit": "m2",
+          "price": 85,
+          "total": 4641
+        },
+        {
+          "name": "门槛石",
+          "qty": 6,
+          "unit": "块",
+          "price": 120,
+          "total": 720
+        }
+      ],
+      "total": 12221
+    },
+    "木工/吊顶": {
+      "items": [
+        {
+          "name": "吊顶(平顶)",
+          "qty": 56.8,
+          "unit": "m2",
+          "price": 120,
+          "total": 6816
+        },
+        {
+          "name": "门套安装",
+          "qty": 3,
+          "unit": "套",
+          "price": 350,
+          "total": 1050
+        },
+        {
+          "name": "踢脚线",
+          "qty": 69.60000000000001,
+          "unit": "m",
+          "price": 25,
+          "total": 1740
+        },
+        {
+          "name": "窗台石",
+          "qty": 4,
+          "unit": "m",
+          "price": 120,
+          "total": 480
+        }
+      ],
+      "total": 10086
+    },
+    "油漆工程": {
+      "items": [
+        {
+          "name": "墙面批灰油漆",
+          "qty": 238.81,
+          "unit": "m2",
+          "price": 35,
+          "total": 8358
+        }
+      ],
+      "total": 8358
+    },
+    "主材": {
+      "items": [
+        {
+          "name": "地面材料",
+          "qty": 56.8,
+          "unit": "m2",
+          "price": 120,
+          "total": 6816
+        },
+        {
+          "name": "墙面砖",
+          "qty": 54.603,
+          "unit": "片",
+          "price": 18,
+          "total": 983
+        },
+        {
+          "name": "乳胶漆",
+          "qty": 6,
+          "unit": "桶",
+          "price": 580,
+          "total": 3480
+        }
+      ],
+      "total": 11279
+    },
+    "其他费用": {
+      "items": [
+        {
+          "name": "材料运输",
+          "qty": 1,
+          "unit": "项",
+          "price": 1500,
+          "total": 1500
+        },
+        {
+          "name": "保洁",
+          "qty": 1,
+          "unit": "项",
+          "price": 1500,
+          "total": 1500
+        },
+        {
+          "name": "管理费",
+          "qty": 1,
+          "unit": "项",
+          "price": 0,
+          "total": 0
+        }
+      ],
+      "total": 3000
+    }
+  }
+}

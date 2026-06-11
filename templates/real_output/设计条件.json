@@ -1,0 +1,65 @@
+{
+  "project": {},
+  "family": {},
+  "style": {},
+  "rooms_requirements": {},
+  "budget": {},
+  "special_requirements": {},
+  "space_data": {
+    "source": "iPhone LiDAR (RoomPlan)",
+    "total_rooms": 6,
+    "total_area_m2": 56.8,
+    "rooms": [
+      {
+        "name": "客厅",
+        "width_mm": 5000,
+        "height_mm": 4000,
+        "area_m2": 20.0,
+        "wall_count": 4
+      },
+      {
+        "name": "厨房",
+        "width_mm": 3000,
+        "height_mm": 2500,
+        "area_m2": 7.5,
+        "wall_count": 3
+      },
+      {
+        "name": "主卧",
+        "width_mm": 4000,
+        "height_mm": 3500,
+        "area_m2": 14.0,
+        "wall_count": 4
+      },
+      {
+        "name": "次卧",
+        "width_mm": 3300,
+        "height_mm": 3000,
+        "area_m2": 9.9,
+        "wall_count": 4
+      },
+      {
+        "name": "卫生间",
+        "width_mm": 2000,
+        "height_mm": 1800,
+        "area_m2": 3.6,
+        "wall_count": 4
+      },
+      {
+        "name": "玄关",
+        "width_mm": 1500,
+        "height_mm": 1200,
+        "area_m2": 1.8,
+        "wall_count": 3
+      }
+    ],
+    "wall_count": 21,
+    "door_count": 4,
+    "window_count": 5,
+    "beam_count": 2,
+    "column_count": 1,
+    "has_beams": true,
+    "has_columns": true,
+    "dxf_path": "templates/real_output/原始结构底图.dxf"
+  }
+}
