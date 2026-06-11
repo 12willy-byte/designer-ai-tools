@@ -1,0 +1,191 @@
+{
+  "soft_furnishings": [
+    {
+      "room": "客厅",
+      "items": [
+        {
+          "category": "沙发",
+          "name": "现代简约布艺沙发",
+          "spec": "2200×900×750mm",
+          "color": "米灰色",
+          "material": "棉麻",
+          "qty": 1,
+          "reference_brand": "参考品牌：北欧风情"
+        },
+        {
+          "category": "茶几",
+          "name": "简约实木茶几",
+          "spec": "1200×600×450mm",
+          "color": "原木色",
+          "material": "白橡木",
+          "qty": 1,
+          "reference_brand": "参考品牌：造作"
+        },
+        {
+          "category": "地毯",
+          "name": "几何图案羊毛地毯",
+          "spec": "2000×3000mm",
+          "color": "米白+浅灰",
+          "material": "羊毛混纺",
+          "qty": 1,
+          "reference_brand": "参考品牌：宜家"
+        },
+        {
+          "category": "窗帘",
+          "name": "纯色亚麻窗帘",
+          "spec": "3000×2500mm",
+          "color": "米色",
+          "material": "亚麻",
+          "qty": 2,
+          "reference_brand": "参考品牌：摩力克"
+        },
+        {
+          "category": "灯具",
+          "name": "简约吊灯",
+          "spec": "直径600mm",
+          "color": "哑光黑",
+          "material": "金属",
+          "qty": 1,
+          "reference_brand": "参考品牌：飞利浦"
+        }
+      ],
+      "total_estimated_budget": "约12000元"
+    },
+    {
+      "room": "厨房",
+      "items": [
+        {
+          "category": "餐桌",
+          "name": "实木餐桌",
+          "spec": "1400×800×750mm",
+          "color": "原木色",
+          "material": "橡木",
+          "qty": 1,
+          "reference_brand": "参考品牌：源氏木语"
+        },
+        {
+          "category": "餐椅",
+          "name": "简约餐椅",
+          "spec": "450×500×850mm",
+          "color": "米白色",
+          "material": "布艺+实木",
+          "qty": 4,
+          "reference_brand": "参考品牌：源氏木语"
+        },
+        {
+          "category": "灯具",
+          "name": "简约吸顶灯",
+          "spec": "直径400mm",
+          "color": "白色",
+          "material": "亚克力",
+          "qty": 1,
+          "reference_brand": "参考品牌：欧普"
+        },
+        {
+          "category": "置物架",
+          "name": "墙面置物架",
+          "spec": "800×200×50mm",
+          "color": "白色",
+          "material": "金属",
+          "qty": 2,
+          "reference_brand": "参考品牌：宜家"
+        }
+      ],
+      "total_estimated_budget": "约8000元"
+    },
+    {
+      "room": "主卧",
+      "items": [
+        {
+          "category": "床",
+          "name": "实木双人床",
+          "spec": "1800×2000mm",
+          "color": "胡桃木色",
+          "material": "胡桃木",
+          "qty": 1,
+          "reference_brand": "参考品牌：北欧表情"
+        },
+        {
+          "category": "床头柜",
+          "name": "简约床头柜",
+          "spec": "500×400×500mm",
+          "color": "胡桃木色",
+          "material": "实木",
+          "qty": 2,
+          "reference_brand": "参考品牌：北欧表情"
+        },
+        {
+          "category": "衣柜",
+          "name": "推拉门衣柜",
+          "spec": "2000×600×2400mm",
+          "color": "白色",
+          "material": "实木颗粒板",
+          "qty": 1,
+          "reference_brand": "参考品牌：索菲亚"
+        },
+        {
+          "category": "窗帘",
+          "name": "遮光窗帘",
+          "spec": "3000×2500mm",
+          "color": "浅灰色",
+          "material": "涤纶",
+          "qty": 2,
+          "reference_brand": "参考品牌：摩力克"
+        },
+        {
+          "category": "灯具",
+          "name": "床头吊灯",
+          "spec": "直径200mm",
+          "color": "金色",
+          "material": "金属",
+          "qty": 2,
+          "reference_brand": "参考品牌：飞利浦"
+        }
+      ],
+      "total_estimated_budget": "约20000元"
+    },
+    {
+      "room": "卫生间",
+      "items": [
+        {
+          "category": "浴室镜",
+          "name": "智能防雾镜",
+          "spec": "800×600mm",
+          "color": "银色",
+          "material": "玻璃+金属",
+          "qty": 1,
+          "reference_brand": "参考品牌：箭牌"
+        },
+        {
+          "category": "浴巾架",
+          "name": "不锈钢浴巾架",
+          "spec": "600×200mm",
+          "color": "拉丝银",
+          "material": "不锈钢",
+          "qty": 1,
+          "reference_brand": "参考品牌：九牧"
+        },
+        {
+          "category": "收纳架",
+          "name": "转角置物架",
+          "spec": "250×250mm",
+          "color": "白色",
+          "material": "塑料",
+          "qty": 1,
+          "reference_brand": "参考品牌：宜家"
+        },
+        {
+          "category": "灯具",
+          "name": "防水吸顶灯",
+          "spec": "直径300mm",
+          "color": "白色",
+          "material": "亚克力",
+          "qty": 1,
+          "reference_brand": "参考品牌：欧普"
+        }
+      ],
+      "total_estimated_budget": "约5000元"
+    }
+  ],
+  "design_notes": "搭配建议：整体以现代简约风格为主，色调偏向米灰、原木和白色，营造温馨自然的氛围。客厅选择棉麻沙发和羊毛地毯增加舒适感，主卧用胡桃木床和遮光窗帘提升睡眠质量，厨房和卫生间注重实用性和防水性。预算分配上，主卧占比最高，体现舒适优先原则。"
+}
