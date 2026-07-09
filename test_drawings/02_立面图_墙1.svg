@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500.0 380.0" width="500.0mm" height="380.0mm">
+<style>
+  .wall { fill:#333; stroke:#000; stroke-width:0.5; }
+  .wall-thin { fill:#999; }
+  .door { fill:#fff; stroke:#00f; stroke-width:0.3; }
+  .door-swing { fill:none; stroke:#00f; stroke-width:0.2; stroke-dasharray:1,1; }
+  .window { fill:#cdf; stroke:#06f; stroke-width:0.3; }
+  .dim { stroke:#f00; stroke-width:0.15; fill:none; }
+  .dim-text { fill:#f00; font-size:2.5px; text-anchor:middle; font-family:sans-serif; }
+  .label { fill:#000; font-size:3px; text-anchor:middle; font-family:sans-serif; }
+  .section-marker { fill:none; stroke:#f00; stroke-width:0.4; }
+  .grid { stroke:#ddd; stroke-width:0.1; fill:none; }
+  .furniture { fill:#eee; stroke:#666; stroke-width:0.2; }
+  .hatch { fill:url(#hatch); stroke:#333; stroke-width:0.3; }
+  .beam { fill:#c60; stroke:#840; stroke-width:0.3; }
+  .column { fill:#666; stroke:#333; stroke-width:0.3; }
+</style>
+<defs>
+  <pattern id="hatch" width="2" height="2" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+    <line x1="0" y1="0" x2="0" y2="2" stroke="#999" stroke-width="0.3"/>
+  </pattern>
+</defs>
+
+<rect x="500.0" y="500.0" width="400.0" height="280.0" fill="#f5f0e8" stroke="#333" stroke-width="0.5"/>
+<line x1="495.0" y1="780.0" x2="905.0" y2="780.0" stroke="#000" stroke-width="1"/>
+<rect x="650.0" y="570.0" width="90.0" height="210.0" class="door"/>
+<line x1="490.0" y1="500.0" x2="490.0" y2="780.0" class="dim"/>
+<text x="488.0" y="640.0" class="dim-text">2800</text>
+<line x1="500.0" y1="790.0" x2="900.0" y2="790.0" class="dim"/>
+<text x="700.0" y="794.0" class="dim-text">4000</text>
+</svg>

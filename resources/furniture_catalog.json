@@ -1,0 +1,617 @@
+{
+  "description": "Chinese market furniture catalog with dimensions, styles, materials, and price ranges",
+  "items": {
+    "书柜": {
+      "w": 800,
+      "d": 350,
+      "h": 2200,
+      "category": "cabinet",
+      "model_url": "https://marketplace-assets.fra1.cdn.digitaloceanspaces.com/bookshelf.glb",
+      "model_format": "glb",
+      "model_path": "C:\\Users\\Administrator\\Documents\\设计师ai辅助自动化工具\\resources\\models\\书柜.obj"
+    },
+    "书桌": {
+      "w": 1200,
+      "d": 600,
+      "h": 750,
+      "category": "table",
+      "model_url": "https://marketplace-assets.fra1.cdn.digitaloceanspaces.com/desk.glb",
+      "model_format": "glb",
+      "model_path": "C:\\Users\\Administrator\\Documents\\设计师ai辅助自动化工具\\resources\\models\\书桌.obj"
+    },
+    "书桌_电动升降": {
+      "w": 1400,
+      "d": 700,
+      "h": 750,
+      "category": "table",
+      "style": "modern",
+      "material": "wood+metal",
+      "price_range": "2500-5000"
+    },
+    "儿童床_1.0m": {
+      "w": 2000,
+      "d": 1100,
+      "h": 800,
+      "category": "bed"
+    },
+    "冰箱_双门": {
+      "w": 910,
+      "d": 720,
+      "h": 1780,
+      "category": "appliance",
+      "model_url": "https://marketplace-assets.fra1.cdn.digitaloceanspaces.com/fridge.glb",
+      "model_format": "glb",
+      "model_path": "C:\\Users\\Administrator\\Documents\\设计师ai辅助自动化工具\\resources\\models\\冰箱_双门.obj"
+    },
+    "冰箱_四门": {
+      "w": 910,
+      "d": 720,
+      "h": 1800,
+      "category": "appliance",
+      "style": "modern",
+      "price_range": "8000-20000"
+    },
+    "净水器": {
+      "w": 400,
+      "d": 200,
+      "h": 400,
+      "category": "appliance"
+    },
+    "化妆台": {
+      "w": 1000,
+      "d": 500,
+      "h": 750,
+      "category": "table",
+      "style": "modern",
+      "material": "wood+mirror",
+      "price_range": "1500-4000"
+    },
+    "单人休闲椅": {
+      "w": 750,
+      "d": 800,
+      "h": 900,
+      "category": "chair",
+      "style": "modern",
+      "material": "fabric+metal",
+      "price_range": "1500-4000"
+    },
+    "单人床_1.2m": {
+      "w": 2100,
+      "d": 1300,
+      "h": 900,
+      "category": "bed",
+      "model_url": "",
+      "model_format": "",
+      "model_path": "C:\\Users\\Administrator\\Documents\\设计师ai辅助自动化工具\\resources\\models\\单人床_1_2m.obj"
+    },
+    "双人床_1.5m": {
+      "w": 2100,
+      "d": 1600,
+      "h": 1050,
+      "category": "bed",
+      "model_url": "https://marketplace-assets.fra1.cdn.digitaloceanspaces.com/bed_150.glb",
+      "model_format": "glb",
+      "model_path": "C:\\Users\\Administrator\\Documents\\设计师ai辅助自动化工具\\resources\\models\\双人床_1_5m.obj"
+    },
+    "双人床_1.8m": {
+      "w": 2200,
+      "d": 1900,
+      "h": 1050,
+      "category": "bed",
+      "model_url": "https://marketplace-assets.fra1.cdn.digitaloceanspaces.com/bed_180.glb",
+      "model_format": "glb",
+      "model_path": "C:\\Users\\Administrator\\Documents\\设计师ai辅助自动化工具\\resources\\models\\双人床_1_8m.obj"
+    },
+    "吧台": {
+      "w": 1200,
+      "d": 500,
+      "h": 1050,
+      "category": "table"
+    },
+    "咖啡机嵌入式": {
+      "w": 600,
+      "d": 450,
+      "h": 450,
+      "category": "appliance",
+      "style": "modern",
+      "price_range": "5000-15000"
+    },
+    "圆餐桌_6人": {
+      "w": 1350,
+      "d": 1350,
+      "h": 750,
+      "category": "table",
+      "style": "chinese",
+      "material": "solid_wood",
+      "price_range": "3000-8000"
+    },
+    "地台": {
+      "w": 2000,
+      "d": 2500,
+      "h": 200,
+      "category": "custom",
+      "style": "japanese",
+      "material": "wood",
+      "price_range": "2000-5000"
+    },
+    "地毯_200x300": {
+      "w": 2000,
+      "d": 3000,
+      "h": 10,
+      "category": "decor",
+      "style": "modern",
+      "material": "wool",
+      "price_range": "2000-8000"
+    },
+    "壁挂马桶": {
+      "w": 500,
+      "d": 380,
+      "h": 400,
+      "category": "sanitary",
+      "style": "modern_minimalist",
+      "price_range": "4000-10000"
+    },
+    "屏风": {
+      "w": 1800,
+      "d": 40,
+      "h": 2000,
+      "category": "decor",
+      "style": "new_chinese",
+      "material": "wood+fabric",
+      "price_range": "2000-6000"
+    },
+    "展示柜": {
+      "w": 900,
+      "d": 350,
+      "h": 2000,
+      "category": "cabinet",
+      "style": "modern",
+      "material": "glass+metal",
+      "price_range": "3000-8000"
+    },
+    "岛台": {
+      "w": 900,
+      "d": 1800,
+      "h": 900,
+      "category": "cabinet"
+    },
+    "床头柜": {
+      "w": 450,
+      "d": 400,
+      "h": 500,
+      "category": "cabinet",
+      "model_url": "https://marketplace-assets.fra1.cdn.digitaloceanspaces.com/nightstand.glb",
+      "model_format": "glb",
+      "model_path": "C:\\Users\\Administrator\\Documents\\设计师ai辅助自动化工具\\resources\\models\\床头柜.obj"
+    },
+    "投影仪": {
+      "w": 300,
+      "d": 250,
+      "h": 120,
+      "category": "electronics",
+      "style": "modern",
+      "price_range": "3000-10000"
+    },
+    "投影幕布_100寸": {
+      "w": 2214,
+      "d": 50,
+      "h": 1245,
+      "category": "electronics",
+      "style": "modern",
+      "price_range": "1000-3000"
+    },
+    "按摩椅": {
+      "w": 850,
+      "d": 1500,
+      "h": 1100,
+      "category": "chair",
+      "style": "modern",
+      "material": "leather+metal",
+      "price_range": "5000-20000"
+    },
+    "换鞋凳": {
+      "w": 600,
+      "d": 350,
+      "h": 450,
+      "category": "chair"
+    },
+    "斗柜": {
+      "w": 800,
+      "d": 450,
+      "h": 900,
+      "category": "cabinet"
+    },
+    "智能马桶": {
+      "w": 700,
+      "d": 420,
+      "h": 500,
+      "category": "sanitary",
+      "style": "modern",
+      "price_range": "3000-8000"
+    },
+    "梳妆台": {
+      "w": 1000,
+      "d": 450,
+      "h": 750,
+      "category": "table",
+      "model_url": "https://marketplace-assets.fra1.cdn.digitaloceanspaces.com/vanity.glb",
+      "model_format": "glb",
+      "model_path": "C:\\Users\\Administrator\\Documents\\设计师ai辅助自动化工具\\resources\\models\\梳妆台.obj"
+    },
+    "榻榻米": {
+      "w": 2000,
+      "d": 2500,
+      "h": 400,
+      "category": "custom",
+      "style": "japanese",
+      "material": "wood+tatami",
+      "price_range": "5000-12000"
+    },
+    "橱柜_地柜": {
+      "w": 600,
+      "d": 600,
+      "h": 850,
+      "category": "cabinet",
+      "model_url": "https://marketplace-assets.fra1.cdn.digitaloceanspaces.com/kitchen_cabinet.glb",
+      "model_format": "glb",
+      "model_path": "C:\\Users\\Administrator\\Documents\\设计师ai辅助自动化工具\\resources\\models\\橱柜_地柜.obj"
+    },
+    "毛巾架_电热": {
+      "w": 600,
+      "d": 100,
+      "h": 900,
+      "category": "sanitary",
+      "style": "modern",
+      "material": "stainless_steel",
+      "price_range": "500-1500"
+    },
+    "沙发_L型": {
+      "w": 3200,
+      "d": 1800,
+      "h": 850,
+      "category": "sofa",
+      "model_url": "https://marketplace-assets.fra1.cdn.digitaloceanspaces.com/sofa_lshape.glb",
+      "model_format": "glb",
+      "model_path": "C:\\Users\\Administrator\\Documents\\设计师ai辅助自动化工具\\resources\\models\\沙发_L型.obj"
+    },
+    "沙发_三人": {
+      "w": 2800,
+      "d": 950,
+      "h": 850,
+      "category": "sofa",
+      "model_url": "https://marketplace-assets.fra1.cdn.digitaloceanspaces.com/sofa_3seater.glb",
+      "model_format": "glb",
+      "model_path": "C:\\Users\\Administrator\\Documents\\设计师ai辅助自动化工具\\resources\\models\\沙发_三人.obj"
+    },
+    "沙发_北欧布艺": {
+      "w": 2400,
+      "d": 900,
+      "h": 800,
+      "category": "sofa",
+      "style": "nordic",
+      "material": "fabric+wood",
+      "price_range": "3000-6000"
+    },
+    "沙发_单人": {
+      "w": 900,
+      "d": 850,
+      "h": 850,
+      "category": "sofa",
+      "model_url": "",
+      "model_format": "",
+      "model_path": "C:\\Users\\Administrator\\Documents\\设计师ai辅助自动化工具\\resources\\models\\沙发_单人.obj"
+    },
+    "沙发_双人": {
+      "w": 1800,
+      "d": 850,
+      "h": 850,
+      "category": "sofa",
+      "model_url": "https://marketplace-assets.fra1.cdn.digitaloceanspaces.com/sofa_2seater.glb",
+      "model_format": "glb",
+      "model_path": "C:\\Users\\Administrator\\Documents\\设计师ai辅助自动化工具\\resources\\models\\沙发_双人.obj"
+    },
+    "沙发_意式极简": {
+      "w": 3200,
+      "d": 1000,
+      "h": 750,
+      "category": "sofa",
+      "style": "modern_minimalist",
+      "material": "fabric+metal",
+      "price_range": "8000-15000"
+    },
+    "沙发_模块": {
+      "w": 900,
+      "d": 950,
+      "h": 850,
+      "category": "sofa"
+    },
+    "油烟机": {
+      "w": 900,
+      "d": 500,
+      "h": 600,
+      "category": "appliance"
+    },
+    "洗手台": {
+      "w": 800,
+      "d": 550,
+      "h": 850,
+      "category": "sanitary",
+      "model_url": "https://marketplace-assets.fra1.cdn.digitaloceanspaces.com/vanity_sink.glb",
+      "model_format": "glb",
+      "model_path": "C:\\Users\\Administrator\\Documents\\设计师ai辅助自动化工具\\resources\\models\\洗手台.obj"
+    },
+    "洗碗机": {
+      "w": 600,
+      "d": 600,
+      "h": 850,
+      "category": "appliance"
+    },
+    "洗衣机": {
+      "w": 600,
+      "d": 600,
+      "h": 850,
+      "category": "appliance",
+      "model_url": "https://marketplace-assets.fra1.cdn.digitaloceanspaces.com/washer.glb",
+      "model_format": "glb",
+      "model_path": "C:\\Users\\Administrator\\Documents\\设计师ai辅助自动化工具\\resources\\models\\洗衣机.obj"
+    },
+    "浴柜": {
+      "w": 800,
+      "d": 500,
+      "h": 850,
+      "category": "cabinet"
+    },
+    "浴缸": {
+      "w": 1600,
+      "d": 750,
+      "h": 600,
+      "category": "sanitary",
+      "model_url": "",
+      "model_format": "",
+      "model_path": "C:\\Users\\Administrator\\Documents\\设计师ai辅助自动化工具\\resources\\models\\浴缸.obj"
+    },
+    "浴缸_独立式": {
+      "w": 1700,
+      "d": 800,
+      "h": 600,
+      "category": "sanitary",
+      "style": "luxury",
+      "material": "acrylic",
+      "price_range": "5000-15000"
+    },
+    "淋浴房_900": {
+      "w": 900,
+      "d": 900,
+      "h": 2100,
+      "category": "sanitary",
+      "model_url": "https://marketplace-assets.fra1.cdn.digitaloceanspaces.com/shower_enclosure.glb",
+      "model_format": "glb",
+      "model_path": "C:\\Users\\Administrator\\Documents\\设计师ai辅助自动化工具\\resources\\models\\淋浴房_900.obj"
+    },
+    "烤箱嵌入式": {
+      "w": 600,
+      "d": 560,
+      "h": 600,
+      "category": "appliance",
+      "style": "modern",
+      "price_range": "3000-8000"
+    },
+    "燃气灶": {
+      "w": 780,
+      "d": 450,
+      "h": 150,
+      "category": "appliance"
+    },
+    "玄关柜": {
+      "w": 1200,
+      "d": 350,
+      "h": 2400,
+      "category": "cabinet"
+    },
+    "电视柜": {
+      "w": 2400,
+      "d": 400,
+      "h": 450,
+      "category": "cabinet",
+      "model_url": "https://marketplace-assets.fra1.cdn.digitaloceanspaces.com/tv_stand.glb",
+      "model_format": "glb",
+      "model_path": "C:\\Users\\Administrator\\Documents\\设计师ai辅助自动化工具\\resources\\models\\电视柜.obj"
+    },
+    "电视柜_悬浮": {
+      "w": 2400,
+      "d": 350,
+      "h": 300,
+      "category": "cabinet",
+      "style": "modern_minimalist",
+      "material": "wood_veneer",
+      "price_range": "2000-5000"
+    },
+    "百叶窗": {
+      "w": 100,
+      "d": 80,
+      "h": 1800,
+      "category": "window_treatment",
+      "style": "modern",
+      "material": "aluminum",
+      "price_range": "500-1500"
+    },
+    "窗帘_电动": {
+      "w": 100,
+      "d": 100,
+      "h": 2600,
+      "category": "window_treatment",
+      "style": "modern",
+      "material": "fabric",
+      "price_range": "2000-5000"
+    },
+    "花洒_恒温": {
+      "w": 300,
+      "d": 300,
+      "h": 1100,
+      "category": "sanitary",
+      "style": "modern",
+      "material": "stainless_steel",
+      "price_range": "2000-6000"
+    },
+    "茶几": {
+      "w": 1200,
+      "d": 600,
+      "h": 450,
+      "category": "table",
+      "model_url": "https://marketplace-assets.fra1.cdn.digitaloceanspaces.com/coffee_table.glb",
+      "model_format": "glb",
+      "model_path": "C:\\Users\\Administrator\\Documents\\设计师ai辅助自动化工具\\resources\\models\\茶几.obj"
+    },
+    "蒸烤箱": {
+      "w": 600,
+      "d": 550,
+      "h": 450,
+      "category": "appliance"
+    },
+    "衣柜_三门": {
+      "w": 1800,
+      "d": 600,
+      "h": 2400,
+      "category": "cabinet",
+      "model_url": "https://marketplace-assets.fra1.cdn.digitaloceanspaces.com/wardrobe_3door.glb",
+      "model_format": "glb",
+      "model_path": "C:\\Users\\Administrator\\Documents\\设计师ai辅助自动化工具\\resources\\models\\衣柜_三门.obj"
+    },
+    "衣柜_双门": {
+      "w": 1200,
+      "d": 600,
+      "h": 2400,
+      "category": "cabinet",
+      "model_url": "https://marketplace-assets.fra1.cdn.digitaloceanspaces.com/wardrobe_2door.glb",
+      "model_format": "glb",
+      "model_path": "C:\\Users\\Administrator\\Documents\\设计师ai辅助自动化工具\\resources\\models\\衣柜_双门.obj"
+    },
+    "衣柜_四门": {
+      "w": 2400,
+      "d": 600,
+      "h": 2400,
+      "category": "cabinet",
+      "style": "modern",
+      "material": "MDF+wood_veneer",
+      "price_range": "6000-12000"
+    },
+    "衣柜_步入式": {
+      "w": 3000,
+      "d": 1200,
+      "h": 2400,
+      "category": "cabinet",
+      "style": "luxury",
+      "material": "solid_wood+glass",
+      "price_range": "15000-40000"
+    },
+    "装饰壁炉": {
+      "w": 1200,
+      "d": 300,
+      "h": 900,
+      "category": "decor",
+      "style": "french",
+      "material": "stone+metal",
+      "price_range": "3000-8000"
+    },
+    "角几": {
+      "w": 500,
+      "d": 500,
+      "h": 550,
+      "category": "table"
+    },
+    "酒柜": {
+      "w": 800,
+      "d": 400,
+      "h": 1800,
+      "category": "cabinet",
+      "style": "luxury",
+      "material": "glass+wood",
+      "price_range": "4000-12000"
+    },
+    "镜柜": {
+      "w": 600,
+      "d": 150,
+      "h": 700,
+      "category": "cabinet"
+    },
+    "鞋柜": {
+      "w": 1000,
+      "d": 350,
+      "h": 2200,
+      "category": "cabinet",
+      "model_url": "https://marketplace-assets.fra1.cdn.digitaloceanspaces.com/shoe_cabinet.glb",
+      "model_format": "glb",
+      "model_path": "C:\\Users\\Administrator\\Documents\\设计师ai辅助自动化工具\\resources\\models\\鞋柜.obj"
+    },
+    "餐桌_4人": {
+      "w": 1400,
+      "d": 800,
+      "h": 750,
+      "category": "table",
+      "model_url": "https://marketplace-assets.fra1.cdn.digitaloceanspaces.com/dining_table_4.glb",
+      "model_format": "glb",
+      "model_path": "C:\\Users\\Administrator\\Documents\\设计师ai辅助自动化工具\\resources\\models\\餐桌_4人.obj"
+    },
+    "餐桌_6人": {
+      "w": 1800,
+      "d": 900,
+      "h": 750,
+      "category": "table",
+      "model_url": "https://marketplace-assets.fra1.cdn.digitaloceanspaces.com/dining_table_6.glb",
+      "model_format": "glb",
+      "model_path": "C:\\Users\\Administrator\\Documents\\设计师ai辅助自动化工具\\resources\\models\\餐桌_6人.obj"
+    },
+    "餐桌_8人": {
+      "w": 2400,
+      "d": 1000,
+      "h": 750,
+      "category": "table",
+      "style": "modern",
+      "material": "wood+metal",
+      "price_range": "4000-10000"
+    },
+    "餐椅": {
+      "w": 450,
+      "d": 450,
+      "h": 850,
+      "category": "chair",
+      "model_url": "https://marketplace-assets.fra1.cdn.digitaloceanspaces.com/dining_chair.glb",
+      "model_format": "glb",
+      "model_path": "C:\\Users\\Administrator\\Documents\\设计师ai辅助自动化工具\\resources\\models\\餐椅.obj"
+    },
+    "餐边柜": {
+      "w": 1500,
+      "d": 400,
+      "h": 900,
+      "category": "cabinet"
+    },
+    "马桶": {
+      "w": 700,
+      "d": 380,
+      "h": 480,
+      "category": "sanitary",
+      "model_url": "https://marketplace-assets.fra1.cdn.digitaloceanspaces.com/toilet.glb",
+      "model_format": "glb",
+      "model_path": "C:\\Users\\Administrator\\Documents\\设计师ai辅助自动化工具\\resources\\models\\马桶.obj"
+    }
+  },
+  "clearance_rules": {
+    "过道最小宽度": 900,
+    "餐桌到墙最小距离": 800,
+    "床两侧走道最小宽度": 600,
+    "沙发到电视最小距离": 2500,
+    "马桶前方空间": 600,
+    "淋浴房最小尺寸": 800,
+    "衣柜开门空间": 900,
+    "厨房操作通道": 1000,
+    "岛台到橱柜": 1100,
+    "玄关换鞋区": 900,
+    "投影距离100寸": 3000,
+    "坐便器中心到侧墙": 400,
+    "洗手台前空间": 800,
+    "双人床两侧走道": 700
+  },
+  "model_source": "placeholder_urls",
+  "models_dir": "resources/models",
+  "total_items": 72
+}

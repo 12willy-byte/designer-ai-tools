@@ -22,3 +22,15 @@ Thumbs.db
 
 # API Keys
 config.py
+.env
+
+# Generated output
+**/concept_output/
+**/real_output/
+output/
+
+# Node
+node_modules/
+
+# Temp/dev scripts
+_*.py

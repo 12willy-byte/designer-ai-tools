@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Designer AI</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI','Microsoft YaHei',sans-serif;background:#1a1a2e;color:#e0e0e0;min-height:100vh}
+header{background:#16213e;padding:16px 24px;display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #0f3460}
+header h1{font-size:20px;color:#e94560}
+.container{display:flex;height:calc(100vh - 60px)}
+.sidebar{width:380px;background:#16213e;padding:20px;overflow-y:auto;border-right:1px solid #0f3460}
+.main{flex:1;display:flex;flex-direction:column}
+.toolbar{background:#16213e;padding:12px 20px;display:flex;gap:10px;border-bottom:1px solid #0f3460}
+.viewer{flex:1;position:relative;background:#0a0a1a}
+.viewer iframe{width:100%;height:100%;border:none}
+.status{background:#16213e;padding:10px 20px;font-size:13px;color:#888;border-top:1px solid #0f3460}
+h3{font-size:16px;color:#e94560;margin:16px 0 10px}
+label{display:block;font-size:13px;color:#aaa;margin:8px 0 4px}
+input,select{width:100%;padding:8px 10px;background:#0f3460;border:1px solid #1a5fa0;color:#fff;border-radius:4px;font-size:14px}
+input:focus,select:focus{outline:none;border-color:#e94560}
+.room-card{background:#0f3460;border-radius:6px;padding:12px;margin:10px 0}
+.row{display:flex;gap:8px}
+.row>*{flex:1}
+.btn{background:#e94560;color:#fff;border:none;padding:10px 16px;border-radius:4px;cursor:pointer;font-size:14px;font-weight:600}
+.btn:hover{background:#c73650}
+.btn-sm{padding:6px 12px;font-size:12px}
+.btn-out{background:transparent;border:1px solid #e94560;color:#e94560}
+.btn-out:hover{background:#e94560;color:#fff}
+table{width:100%;font-size:13px;border-collapse:collapse;margin:10px 0}
+th,td{padding:6px 10px;text-align:left;border-bottom:1px solid #0f3460}
+th{color:#e94560}
+.result-item{margin:6px 0;font-size:13px}
+.result-item a{color:#64b5f6}
+</style>
+</head>
+<body>
+<header>
+<h1>Designer AI Tool</h1>
+<button class="btn" onclick="generate()">Generate All</button>
+</header>
+<div class="container">
+<div class="sidebar">
+<h3>Rooms</h3>
+<div id="roomList"></div>
+<button class="btn btn-sm btn-out" onclick="addRoom()" style="width:100%;margin-top:8px">+ Add Room</button>
+<div id="budgetDisplay"></div>
+</div>
+<div class="main">
+<div class="toolbar">
+<button class="btn btn-sm" onclick="loadView('3d_preview.html')">3D Preview</button>
+<button class="btn btn-sm btn-out" onclick="loadView('floor_plan.dxf')">DXF Plan</button>
+<button class="btn btn-sm btn-out" onclick="loadView('budget.json')">Budget JSON</button>
+<button class="btn btn-sm btn-out" onclick="loadView('scene.json')">Scene Data</button>
+</div>
+<div class="viewer"><iframe id="vf" src="about:blank"></iframe></div>
+<div class="status" id="status">Ready. Click Generate All to start.</div>
+</div>
+</div>
+<script>
+var D = [{name:"Living",type:"living",length_mm:5500,width_mm:4500},{name:"Bedroom",type:"bedroom",length_mm:4200,width_mm:3600},{name:"Kitchen",type:"kitchen",length_mm:3000,width_mm:2400}];
+var TYPES = ["living","bedroom","kitchen","bathroom","dining","study","entry"];
+
+function init(){ render(D); checkOutput(); } init();
+
+function render(rooms){
+  var html = "";
+  for(var i=0; i<rooms.length; i++){
+    var r = rooms[i];
+    var sel = "";
+    for(var j=0; j<TYPES.length; j++){
+      sel += '<option value="'+TYPES[j]+'"'+(r.type===TYPES[j]?' selected':'')+'>'+TYPES[j]+'</option>';
+    }
+    html += '<div class="room-card">';
+    html += '<div class="row"><input class="rn" value="'+r.name+'"><select class="rt">'+sel+'</select></div>';
+    html += '<div class="row" style="margin-top:6px"><input class="rl" type="number" value="'+r.length_mm+'"><input class="rw" type="number" value="'+r.width_mm+'"></div>';
+    html += '<button class="btn btn-sm btn-out" style="margin-top:6px" onclick="del('+i+')">Delete</button>';
+    html += '</div>';
+  }
+  document.getElementById("roomList").innerHTML = html;
+}
+
+function getR(){
+  var cards = document.querySelectorAll(".room-card");
+  var rooms = [];
+  for(var i=0; i<cards.length; i++){
+    var c = cards[i];
+    rooms.push({
+      name: c.querySelector(".rn").value,
+      type: c.querySelector(".rt").value,
+      length_mm: parseInt(c.querySelector(".rl").value)||4000,
+      width_mm: parseInt(c.querySelector(".rw").value)||3500
+    });
+  }
+  return rooms;
+}
+
+function addRoom(){ render(getR().concat([{name:"New",type:"living",length_mm:4000,width_mm:3500}])); }
+function del(i){ var r=getR(); r.splice(i,1); render(r); }
+
+async function generate(){
+  document.getElementById("status").textContent = "Generating...";
+  try{
+    var resp = await fetch("/api/generate",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({rooms:getR(),style:"modern"})
+    });
+    var d = await resp.json();
+    if(d.error) throw new Error(d.error);
+    if(d.budget){
+      var s = d.budget.summary;
+      var h = "<h3>Budget</h3><table>";
+      for(var k in s){
+        var v = s[k];
+        h += "<tr><td>"+k+"</td><td style='text-align:right'>"+(typeof v==="number"?v.toLocaleString()+" CNY":v)+"</td></tr>";
+      }
+      h += "</table>";
+      document.getElementById("budgetDisplay").innerHTML = h;
+    }
+    document.getElementById("status").textContent = "Done! Total: "+(d.budget.summary.total||0).toLocaleString()+" CNY";
+    setTimeout(function(){ loadView("3d_preview.html"); }, 500);
+  }catch(e){
+    document.getElementById("status").textContent = "Error: "+e.message;
+  }
+}
+
+function loadView(f){
+  document.getElementById("vf").src = "/output/latest/"+f+"?_="+Date.now();
+}
+
+function checkOutput(){
+  setInterval(function(){
+    fetch("/api/status").then(function(r){return r.json()}).then(function(d){
+      if(d.ready) document.getElementById("status").textContent = "Ready";
+    });
+  }, 5000);
+}
+</script>
+</body>
+</html>

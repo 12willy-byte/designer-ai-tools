@@ -1,0 +1,423 @@
+{
+  "pointcloud": {
+    "source": "RoomPlan LiDAR",
+    "file": "C:/Users/Administrator/Documents/设计师ai辅助自动化工具/templates/sample_roomplan.json",
+    "rooms": [
+      {
+        "name": "客厅",
+        "width_mm": 6000,
+        "depth_mm": 4500,
+        "height_mm": 2800,
+        "area_m2": 27.0,
+        "wall_count": 4,
+        "wall_ids": [
+          "wall-L-1",
+          "wall-L-2",
+          "wall-L-3",
+          "wall-L-4"
+        ]
+      },
+      {
+        "name": "厨房",
+        "width_mm": 3600,
+        "depth_mm": 3600,
+        "height_mm": 2800,
+        "area_m2": 12.96,
+        "wall_count": 3,
+        "wall_ids": [
+          "wall-K-1",
+          "wall-K-2",
+          "wall-K-3"
+        ]
+      },
+      {
+        "name": "主卧",
+        "width_mm": 3300,
+        "depth_mm": 3000,
+        "height_mm": 2800,
+        "area_m2": 9.9,
+        "wall_count": 4,
+        "wall_ids": [
+          "wall-B-1",
+          "wall-B-2",
+          "wall-B-3",
+          "wall-B-4"
+        ]
+      },
+      {
+        "name": "卫生间",
+        "width_mm": 1800,
+        "depth_mm": 1500,
+        "height_mm": 2800,
+        "area_m2": 2.7,
+        "wall_count": 4,
+        "wall_ids": [
+          "wall-WC-1",
+          "wall-WC-2",
+          "wall-WC-3",
+          "wall-WC-4"
+        ]
+      }
+    ],
+    "total_area_m2": 52.56,
+    "walls": [
+      {
+        "id": "wall-L-1",
+        "start": [
+          0,
+          0,
+          0
+        ],
+        "end": [
+          6000,
+          0,
+          0
+        ],
+        "length_mm": 6000,
+        "height_mm": 2800,
+        "openings": [
+          {
+            "type": "window",
+            "offset_mm": 1800.0,
+            "width_mm": 2400,
+            "height_mm": 1500,
+            "sill_height_mm": "1300"
+          }
+        ]
+      },
+      {
+        "id": "wall-L-2",
+        "start": [
+          6000,
+          0,
+          0
+        ],
+        "end": [
+          6000,
+          0,
+          4500
+        ],
+        "length_mm": 4500,
+        "height_mm": 2800,
+        "openings": []
+      },
+      {
+        "id": "wall-L-3",
+        "start": [
+          6000,
+          0,
+          4500
+        ],
+        "end": [
+          0,
+          0,
+          4500
+        ],
+        "length_mm": 6000,
+        "height_mm": 2800,
+        "openings": []
+      },
+      {
+        "id": "wall-L-4",
+        "start": [
+          0,
+          0,
+          4500
+        ],
+        "end": [
+          0,
+          0,
+          0
+        ],
+        "length_mm": 4500,
+        "height_mm": 2800,
+        "openings": [
+          {
+            "type": "door",
+            "offset_mm": 900.0,
+            "width_mm": 900,
+            "height_mm": 2100
+          }
+        ]
+      },
+      {
+        "id": "wall-K-1",
+        "start": [
+          0,
+          0,
+          0
+        ],
+        "end": [
+          0,
+          0,
+          3600
+        ],
+        "length_mm": 3600,
+        "height_mm": 2800,
+        "openings": []
+      },
+      {
+        "id": "wall-K-2",
+        "start": [
+          0,
+          0,
+          3600
+        ],
+        "end": [
+          -3000,
+          0,
+          3600
+        ],
+        "length_mm": 3000,
+        "height_mm": 2800,
+        "openings": [
+          {
+            "type": "window",
+            "offset_mm": 2700.0,
+            "width_mm": 1800,
+            "height_mm": 1500,
+            "sill_height_mm": "1300"
+          }
+        ]
+      },
+      {
+        "id": "wall-K-3",
+        "start": [
+          -3600,
+          0,
+          3600
+        ],
+        "end": [
+          -3600,
+          0,
+          0
+        ],
+        "length_mm": 3600,
+        "height_mm": 2800,
+        "openings": []
+      },
+      {
+        "id": "wall-B-1",
+        "start": [
+          6000,
+          0,
+          4500
+        ],
+        "end": [
+          9300,
+          0,
+          4500
+        ],
+        "length_mm": 3300,
+        "height_mm": 2800,
+        "openings": [
+          {
+            "type": "window",
+            "offset_mm": -5100.0,
+            "width_mm": 1500,
+            "height_mm": 1500,
+            "sill_height_mm": "1300"
+          }
+        ]
+      },
+      {
+        "id": "wall-B-2",
+        "start": [
+          9300,
+          0,
+          4500
+        ],
+        "end": [
+          9300,
+          0,
+          7500
+        ],
+        "length_mm": 3000,
+        "height_mm": 2800,
+        "openings": []
+      },
+      {
+        "id": "wall-B-3",
+        "start": [
+          9300,
+          0,
+          7500
+        ],
+        "end": [
+          6000,
+          0,
+          7500
+        ],
+        "length_mm": 3300,
+        "height_mm": 2800,
+        "openings": [
+          {
+            "type": "door",
+            "offset_mm": 300.0,
+            "width_mm": 800,
+            "height_mm": 2100
+          }
+        ]
+      },
+      {
+        "id": "wall-B-4",
+        "start": [
+          6000,
+          0,
+          7500
+        ],
+        "end": [
+          6000,
+          0,
+          4500
+        ],
+        "length_mm": 3000,
+        "height_mm": 2800,
+        "openings": []
+      },
+      {
+        "id": "wall-WC-1",
+        "start": [
+          9300,
+          0,
+          7500
+        ],
+        "end": [
+          11100,
+          0,
+          7500
+        ],
+        "length_mm": 1800,
+        "height_mm": 2800,
+        "openings": []
+      },
+      {
+        "id": "wall-WC-2",
+        "start": [
+          11100,
+          0,
+          7500
+        ],
+        "end": [
+          11100,
+          0,
+          9000
+        ],
+        "length_mm": 1500,
+        "height_mm": 2800,
+        "openings": [
+          {
+            "type": "window",
+            "offset_mm": 0.0,
+            "width_mm": 600,
+            "height_mm": 900,
+            "sill_height_mm": "1600"
+          }
+        ]
+      },
+      {
+        "id": "wall-WC-3",
+        "start": [
+          11100,
+          0,
+          9000
+        ],
+        "end": [
+          9300,
+          0,
+          9000
+        ],
+        "length_mm": 1800,
+        "height_mm": 2800,
+        "openings": []
+      },
+      {
+        "id": "wall-WC-4",
+        "start": [
+          9300,
+          0,
+          9000
+        ],
+        "end": [
+          9300,
+          0,
+          7500
+        ],
+        "length_mm": 1500,
+        "height_mm": 2800,
+        "openings": []
+      }
+    ],
+    "doors": [
+      {
+        "id": "door-L-K",
+        "width_mm": 900,
+        "height_mm": 2100
+      },
+      {
+        "id": "door-B-WC",
+        "width_mm": 800,
+        "height_mm": 2100
+      }
+    ],
+    "windows": [
+      {
+        "id": "window-L-1",
+        "width_mm": 2400,
+        "height_mm": 1500
+      },
+      {
+        "id": "window-K-1",
+        "width_mm": 1800,
+        "height_mm": 1500
+      },
+      {
+        "id": "window-B-1",
+        "width_mm": 1500,
+        "height_mm": 1500
+      },
+      {
+        "id": "window-WC-1",
+        "width_mm": 600,
+        "height_mm": 900
+      }
+    ],
+    "beams": [
+      {
+        "position_mm": [
+          0,
+          2400,
+          1500
+        ],
+        "width_mm": 300,
+        "depth_mm": 400
+      }
+    ],
+    "columns": [
+      {
+        "position_mm": [
+          3000,
+          0,
+          2000
+        ],
+        "width_mm": 400,
+        "depth_mm": 400
+      }
+    ],
+    "has_beams": true,
+    "has_columns": true,
+    "wall_count": 15,
+    "door_count": 2,
+    "window_count": 4
+  },
+  "cad": {
+    "bounds": [
+      -4500.0,
+      -100.0,
+      11200.0,
+      9100.0
+    ],
+    "walls": 197,
+    "layers": 12
+  }
+}

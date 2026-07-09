@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>sample_roomplan.json</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #1a1a2e; font-family: "Microsoft YaHei", sans-serif; overflow: hidden; }
+  #info { position: absolute; top: 16px; left: 16px; color: #aaa; font-size: 12px; z-index: 10; }
+  #info h2 { color: #eee; margin-bottom: 4px; }
+  #stats { position: absolute; bottom: 16px; right: 16px; color: #666; font-size: 11px; text-align: right; z-index: 10; }
+  #legend { position: absolute; bottom: 16px; left: 16px; color: #999; font-size: 11px; z-index: 10; }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+</style>
+</head>
+<body>
+<div id="info">
+  <h2>sample_roomplan.json</h2>
+  <div>房间: 4 | 墙: 15 | 门: 2 | 窗: 4 | 面积: 52.6m²</div>
+</div>
+<div id="legend">
+  <div><span class="dot" style="background:#8090a0"></span> 墙体</div>
+  <div><span class="dot" style="background:#e8913a"></span> 门</div>
+  <div><span class="dot" style="background:#4a90d9"></span> 窗</div>
+  <div><span class="dot" style="background:#c9a96e"></span> 家具</div>
+  <div><span class="dot" style="background:#ffd70088"></span> 梁</div>
+  <div><span class="dot" style="background:#8B4513"></span> 柱</div>
+</div>
+<div id="stats"></div>
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
+</script>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+const SCENE_DATA = {"walls": [{"sx": 0.0, "sz": 0.0, "ex": 6.0, "ez": 0.0, "h": 2.8, "thick": 0.12, "openings": [{"off": 1.8, "w": 2.4, "h": 1.5, "sill": 1.3, "type": "window"}]}, {"sx": 6.0, "sz": 0.0, "ex": 6.0, "ez": 4.5, "h": 2.8, "thick": 0.12, "openings": []}, {"sx": 6.0, "sz": 4.5, "ex": 0.0, "ez": 4.5, "h": 2.8, "thick": 0.12, "openings": []}, {"sx": 0.0, "sz": 4.5, "ex": 0.0, "ez": 0.0, "h": 2.8, "thick": 0.12, "openings": [{"off": 0.9, "w": 0.9, "h": 2.1, "sill": 0.0, "type": "door"}]}, {"sx": 0.0, "sz": 0.0, "ex": 0.0, "ez": 3.6, "h": 2.8, "thick": 0.12, "openings": []}, {"sx": 0.0, "sz": 3.6, "ex": -3.0, "ez": 3.6, "h": 2.8, "thick": 0.12, "openings": [{"off": 2.7, "w": 1.8, "h": 1.5, "sill": 1.3, "type": "window"}]}, {"sx": -3.6, "sz": 3.6, "ex": -3.6, "ez": 0.0, "h": 2.8, "thick": 0.12, "openings": []}, {"sx": 6.0, "sz": 4.5, "ex": 9.3, "ez": 4.5, "h": 2.8, "thick": 0.12, "openings": [{"off": 0.0, "w": 1.5, "h": 1.5, "sill": 1.3, "type": "window"}]}, {"sx": 9.3, "sz": 4.5, "ex": 9.3, "ez": 7.5, "h": 2.8, "thick": 0.12, "openings": []}, {"sx": 9.3, "sz": 7.5, "ex": 6.0, "ez": 7.5, "h": 2.8, "thick": 0.12, "openings": [{"off": 0.3, "w": 0.8, "h": 2.1, "sill": 0.0, "type": "door"}]}, {"sx": 6.0, "sz": 7.5, "ex": 6.0, "ez": 4.5, "h": 2.8, "thick": 0.12, "openings": []}, {"sx": 9.3, "sz": 7.5, "ex": 11.1, "ez": 7.5, "h": 2.8, "thick": 0.12, "openings": []}, {"sx": 11.1, "sz": 7.5, "ex": 11.1, "ez": 9.0, "h": 2.8, "thick": 0.12, "openings": [{"off": 0.0, "w": 0.6, "h": 0.9, "sill": 1.6, "type": "window"}]}, {"sx": 11.1, "sz": 9.0, "ex": 9.3, "ez": 9.0, "h": 2.8, "thick": 0.12, "openings": []}, {"sx": 9.3, "sz": 9.0, "ex": 9.3, "ez": 7.5, "h": 2.8, "thick": 0.12, "openings": []}], "rooms": [{"floor": [{"x": 0.0, "z": 0.0}, {"x": 6.0, "z": 0.0}, {"x": 6.0, "z": 4.5}, {"x": 0.0, "z": 4.5}], "name": "客厅"}, {"floor": [{"x": -3.6, "z": 0.0}, {"x": 0.0, "z": 0.0}, {"x": 0.0, "z": 3.6}, {"x": -3.0, "z": 3.6}, {"x": -3.6, "z": 3.6}], "name": "厨房"}, {"floor": [{"x": 6.0, "z": 4.5}, {"x": 9.3, "z": 4.5}, {"x": 9.3, "z": 7.5}, {"x": 6.0, "z": 7.5}], "name": "主卧"}, {"floor": [{"x": 9.3, "z": 7.5}, {"x": 11.1, "z": 7.5}, {"x": 11.1, "z": 9.0}, {"x": 9.3, "z": 9.0}], "name": "卫生间"}], "furniture": [], "beams": [{"px": 0.0, "pz": 1.5, "w": 0.3, "d": 0.4, "l": 0.3}], "columns": [{"px": 3.0, "pz": 2.0, "w": 0.4, "d": 0.4}], "doors": 2, "windows": 4};
+
+// 场景初始化
+const container = document.body;
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+container.appendChild(renderer.domElement);
+
+const scene3d = new THREE.Scene();
+scene3d.background = new THREE.Color(0x1a1a2e);
+scene3d.fog = new THREE.Fog(0x1a1a2e, 15, 60);
+
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.5, 200);
+camera.position.set(12, 10, 12);
+camera.lookAt(0, 0, 0);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 1.4, 0);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.maxPolarAngle = Math.PI / 2.1;
+controls.update();
+
+// 光照
+const ambient = new THREE.AmbientLight(0x8899bb, 1.2);
+scene3d.add(ambient);
+const sun = new THREE.DirectionalLight(0xffffff, 2.5);
+sun.position.set(15, 20, 10);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.near = 0.5; sun.shadow.camera.far = 80;
+sun.shadow.camera.left = -20; sun.shadow.camera.right = 20;
+sun.shadow.camera.top = 20; sun.shadow.camera.bottom = -20;
+scene3d.add(sun);
+const hemi = new THREE.HemisphereLight(0x8899cc, 0x443333, 0.6);
+scene3d.add(hemi);
+
+const grid = new THREE.GridHelper(30, 30, 0x333355, 0x222244);
+scene3d.add(grid);
+
+// 材质
+const matWall = new THREE.MeshStandardMaterial({ color: 0x8090a0, roughness: 0.7, metalness: 0.05 });
+const matFloor = new THREE.MeshStandardMaterial({ color: 0xd5cfc0, roughness: 0.8, metalness: 0 });
+const matDoor = new THREE.MeshStandardMaterial({ color: 0xe8913a, roughness: 0.5, metalness: 0.1 });
+const matWindow = new THREE.MeshStandardMaterial({ color: 0x4a90d9, roughness: 0.2, metalness: 0.3, opacity: 0.5, transparent: true });
+const matFurniture = new THREE.MeshStandardMaterial({ color: 0xc9a96e, roughness: 0.6, metalness: 0.05 });
+const matBeam = new THREE.MeshStandardMaterial({ color: 0xffd700, roughness: 0.4, metalness: 0.2, opacity: 0.4, transparent: true });
+const matColumn = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.3, metalness: 0.3 });
+
+function createBox(w, h, d, mat) {
+  const geo = new THREE.BoxGeometry(w, h, d);
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.castShadow = true; mesh.receiveShadow = true;
+  return mesh;
+}
+
+const data = SCENE_DATA;
+
+// 墙
+data.walls.forEach(w => {
+  const dx = w.ex - w.sx, dz = w.ez - w.sz;
+  const len = Math.sqrt(dx*dx + dz*dz) || 0.01;
+  const nx = -dz/len, nz = dx/len;
+  const halfT = w.thick / 2;
+
+  let segs = [[0, len]];
+  (w.openings || []).sort((a,b)=>a.off-b.off).forEach(op => {
+    const newSegs = [];
+    segs.forEach(([s,e]) => {
+      if (op.off > s + 0.01) newSegs.push([s, Math.min(e, op.off)]);
+      const opEnd = op.off + op.w;
+      if (opEnd < e - 0.01) newSegs.push([Math.max(s, opEnd), e]);
+    });
+    segs = newSegs;
+  });
+
+  segs.forEach(([s,e]) => {
+    if (e - s < 0.01) return;
+    const segLen = e - s;
+    const cx = w.sx + dx * (s + segLen/2) / len;
+    const cz = w.sz + dz * (s + segLen/2) / len;
+    const box = createBox(segLen, w.h, w.thick, matWall);
+    box.position.set(cx, w.h/2, cz);
+    box.rotation.y = Math.atan2(dz, dx);
+    scene3d.add(box);
+  });
+
+  (w.openings || []).forEach(op => {
+    const ocx = w.sx + dx * (op.off + op.w/2) / len;
+    const ocz = w.sz + dz * (op.off + op.w/2) / len;
+    const isDoor = op.type === "door";
+    const mat = isDoor ? matDoor : matWindow;
+    const oh = isDoor ? op.h : (op.h || 1.5);
+    const box = createBox(op.w, oh, w.thick * 1.1, mat);
+    box.position.set(ocx, oh/2 + (isDoor ? 0 : (op.sill || 0.9)), ocz);
+    box.rotation.y = Math.atan2(dz, dx);
+    scene3d.add(box);
+  });
+});
+
+// 地面
+data.rooms.forEach(r => {
+  if (r.floor.length < 3) return;
+  const shape = new THREE.Shape();
+  r.floor.forEach((p,i) => {
+    if (i===0) shape.moveTo(p.x, p.z);
+    else shape.lineTo(p.x, p.z);
+  });
+  const geo = new THREE.ShapeGeometry(shape);
+  const mesh = new THREE.Mesh(geo, matFloor);
+  mesh.rotation.x = -Math.PI/2;
+  mesh.position.y = 0.01;
+  mesh.receiveShadow = true;
+  scene3d.add(mesh);
+});
+
+// 家具
+data.furniture.forEach(f => {
+  const box = createBox(f.w, f.h, f.d, matFurniture);
+  box.position.set(f.px + f.w/2, f.h/2, f.pz + f.d/2);
+  scene3d.add(box);
+});
+
+// 梁
+data.beams.forEach(b => {
+  const box = createBox(b.l, b.d, b.w, matBeam);
+  box.position.set(b.px + b.l/2, 2.5, b.pz + b.w/2);
+  scene3d.add(box);
+});
+
+// 柱
+data.columns.forEach(c => {
+  const box = createBox(c.w, 2.8, c.d, matColumn);
+  box.position.set(c.px + c.w/2, 1.4, c.pz + c.d/2);
+  scene3d.add(box);
+});
+
+// 动画
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene3d, camera);
+}
+animate();
+
+window.addEventListener("resize", () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+document.getElementById("stats").innerHTML =
+  "房间 " + data.rooms.length + " | 墙 " + data.walls.length + " | 门 " + data.doors + " | 窗 " + data.windows + " | 家具 " + data.furniture.length;
+</script>
+</body>
+</html>

@@ -1,0 +1,52 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-06-12T15:30:00Z",
+  "surfaces": [
+    {"identifier":"wall-LR-1","category":"wall","dimensions":{"x":6000,"y":2800},"transform":[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1],"parentIdentifier":null},
+    {"identifier":"wall-LR-2","category":"wall","dimensions":{"x":4800,"y":2800},"transform":[0,0,1,0,0,1,0,0,-1,0,0,0,6000,0,0,1],"parentIdentifier":null},
+    {"identifier":"wall-LR-3","category":"wall","dimensions":{"x":6000,"y":2800},"transform":[-1,0,0,0,0,1,0,0,0,0,-1,0,6000,0,4800,1],"parentIdentifier":null},
+    {"identifier":"wall-LR-4","category":"wall","dimensions":{"x":4800,"y":2800},"transform":[0,0,-1,0,0,1,0,0,1,0,0,0,0,0,4800,1],"parentIdentifier":null},
+    {"identifier":"window-LR","category":"window","dimensions":{"x":3000,"y":1800},"transform":[1,0,0,0,0,1,0,0,0,0,1,0,1500,1000,0,1],"parentIdentifier":"wall-LR-1"},
+    {"identifier":"door-LR-EN","category":"door","dimensions":{"x":1200,"y":2200},"transform":[0,0,-1,0,0,1,0,0,1,0,0,0,2000,0,4800,1],"parentIdentifier":"wall-LR-4"},
+
+    {"identifier":"wall-LR-5","category":"wall","dimensions":{"x":3000,"y":2800},"transform":[0,0,1,0,0,1,0,0,-1,0,0,0,3000,0,4800,1],"parentIdentifier":null},
+    {"identifier":"wall-LR-6","category":"wall","dimensions":{"x":3000,"y":2800},"transform":[-1,0,0,0,0,1,0,0,0,0,-1,0,3000,0,7800,1],"parentIdentifier":null},
+    {"identifier":"wall-LR-7","category":"wall","dimensions":{"x":3000,"y":2800},"transform":[0,0,-1,0,0,1,0,0,1,0,0,0,0,0,7800,1],"parentIdentifier":null},
+    {"identifier":"door-EN-K","category":"door","dimensions":{"x":900,"y":2100},"transform":[-1,0,0,0,0,1,0,0,0,0,-1,0,1000,0,7800,1],"parentIdentifier":"wall-LR-6"},
+
+    {"identifier":"wall-K-1","category":"wall","dimensions":{"x":3500,"y":2800},"transform":[0,0,1,0,0,1,0,0,-1,0,0,0,0,0,7800,1],"parentIdentifier":null},
+    {"identifier":"wall-K-2","category":"wall","dimensions":{"x":3200,"y":2800},"transform":[-1,0,0,0,0,1,0,0,0,0,-1,0,0,0,11300,1],"parentIdentifier":null},
+    {"identifier":"wall-K-3","category":"wall","dimensions":{"x":3500,"y":2800},"transform":[0,0,-1,0,0,1,0,0,1,0,0,0,-3500,0,11300,1],"parentIdentifier":null},
+    {"identifier":"window-K","category":"window","dimensions":{"x":2000,"y":1500},"transform":[-1,0,0,0,0,1,0,0,0,0,-1,0,0,1300,11300,1],"parentIdentifier":"wall-K-2"},
+    {"identifier":"door-K-MB","category":"door","dimensions":{"x":900,"y":2100},"transform":[0,0,1,0,0,1,0,0,-1,0,0,0,6000,0,4800,1],"parentIdentifier":"wall-LR-3"},
+
+    {"identifier":"wall-MB-1","category":"wall","dimensions":{"x":4000,"y":2800},"transform":[1,0,0,0,0,1,0,0,0,0,1,0,6000,0,4800,1],"parentIdentifier":null},
+    {"identifier":"wall-MB-2","category":"wall","dimensions":{"x":4800,"y":2800},"transform":[0,0,1,0,0,1,0,0,-1,0,0,0,10000,0,4800,1],"parentIdentifier":null},
+    {"identifier":"wall-MB-3","category":"wall","dimensions":{"x":4000,"y":2800},"transform":[-1,0,0,0,0,1,0,0,0,0,-1,0,10000,0,9600,1],"parentIdentifier":null},
+    {"identifier":"window-MB","category":"window","dimensions":{"x":2400,"y":1800},"transform":[1,0,0,0,0,1,0,0,0,0,1,0,6800,1000,4800,1],"parentIdentifier":"wall-MB-1"},
+
+    {"identifier":"wall-SB-1","category":"wall","dimensions":{"x":3500,"y":2800},"transform":[1,0,0,0,0,1,0,0,0,0,1,0,6000,0,9600,1],"parentIdentifier":null},
+    {"identifier":"wall-SB-2","category":"wall","dimensions":{"x":2800,"y":2800},"transform":[0,0,1,0,0,1,0,0,-1,0,0,0,9500,0,9600,1],"parentIdentifier":null},
+    {"identifier":"wall-SB-3","category":"wall","dimensions":{"x":3500,"y":2800},"transform":[-1,0,0,0,0,1,0,0,0,0,-1,0,9500,0,12400,1],"parentIdentifier":null},
+    {"identifier":"wall-SB-4","category":"wall","dimensions":{"x":2800,"y":2800},"transform":[0,0,-1,0,0,1,0,0,1,0,0,0,6000,0,12400,1],"parentIdentifier":null},
+    {"identifier":"window-SB","category":"window","dimensions":{"x":1800,"y":1500},"transform":[1,0,0,0,0,1,0,0,0,0,1,0,6850,1300,9600,1],"parentIdentifier":"wall-SB-1"},
+    {"identifier":"door-SB","category":"door","dimensions":{"x":900,"y":2100},"transform":[0,0,-1,0,0,1,0,0,1,0,0,0,6600,0,9600,1],"parentIdentifier":"wall-SB-1"},
+
+    {"identifier":"wall-BA-1","category":"wall","dimensions":{"x":2500,"y":2800},"transform":[-1,0,0,0,0,1,0,0,0,0,-1,0,9500,0,12400,1],"parentIdentifier":null},
+    {"identifier":"wall-BA-2","category":"wall","dimensions":{"x":2000,"y":2800},"transform":[0,0,-1,0,0,1,0,0,1,0,0,0,7000,0,12400,1],"parentIdentifier":null},
+    {"identifier":"wall-BA-3","category":"wall","dimensions":{"x":2500,"y":2800},"transform":[1,0,0,0,0,1,0,0,0,0,1,0,7000,0,10400,1],"parentIdentifier":null},
+    {"identifier":"window-BA","category":"window","dimensions":{"x":1200,"y":1200},"transform":[0,0,-1,0,0,1,0,0,1,0,0,0,8000,1400,12400,1],"parentIdentifier":"wall-BA-2"},
+    {"identifier":"door-BA","category":"door","dimensions":{"x":800,"y":2100},"transform":[-1,0,0,0,0,1,0,0,0,0,-1,0,8700,0,12400,1],"parentIdentifier":"wall-BA-1"},
+
+    {"identifier":"beam-LR-1","category":"beam","dimensions":{"x":300,"y":400},"transform":[1,0,0,0,0,1,0,0,0,0,1,0,2000,2400,2000,1],"parentIdentifier":null},
+    {"identifier":"beam-LR-2","category":"beam","dimensions":{"x":300,"y":400},"transform":[0,0,1,0,0,1,0,0,-1,0,0,0,6000,2400,2400,1],"parentIdentifier":null},
+    {"identifier":"column-LR","category":"column","dimensions":{"x":400,"y":400},"transform":[1,0,0,0,0,1,0,0,0,0,1,0,3000,0,2400,1],"parentIdentifier":null}
+  ],
+  "rooms": [
+    {"identifier":"room-LR","category":"room","displayName":"客厅","surfaces":["wall-LR-1","wall-LR-2","wall-LR-3","wall-LR-4","wall-LR-5","wall-LR-6","wall-LR-7"],"dimensions":{"x":6000,"y":4800}},
+    {"identifier":"room-K","category":"room","displayName":"厨房","surfaces":["wall-K-1","wall-K-2","wall-K-3"],"dimensions":{"x":3500,"y":3200}},
+    {"identifier":"room-MB","category":"room","displayName":"主卧","surfaces":["wall-MB-1","wall-MB-2","wall-MB-3","wall-LR-3"],"dimensions":{"x":4000,"y":4800}},
+    {"identifier":"room-SB","category":"room","displayName":"次卧","surfaces":["wall-SB-1","wall-SB-2","wall-SB-3","wall-SB-4"],"dimensions":{"x":3500,"y":2800}},
+    {"identifier":"room-BA","category":"room","displayName":"卫生间","surfaces":["wall-BA-1","wall-BA-2","wall-BA-3"],"dimensions":{"x":2500,"y":2000}}
+  ]
+}

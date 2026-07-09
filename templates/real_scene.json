@@ -1,0 +1,327 @@
+{
+  "id": "test-real-001",
+  "name": "典型两室一厅",
+  "rooms": [
+    {
+      "id": "r1",
+      "name": "客厅",
+      "type": "客厅",
+      "length_mm": 5000,
+      "width_mm": 4200,
+      "height_mm": 2800
+    },
+    {
+      "id": "r2",
+      "name": "主卧",
+      "type": "主卧",
+      "length_mm": 4200,
+      "width_mm": 3500,
+      "height_mm": 2800
+    },
+    {
+      "id": "r3",
+      "name": "次卧",
+      "type": "卧室",
+      "length_mm": 3500,
+      "width_mm": 3000,
+      "height_mm": 2800
+    },
+    {
+      "id": "r4",
+      "name": "厨房",
+      "type": "厨房",
+      "length_mm": 3000,
+      "width_mm": 2500,
+      "height_mm": 2800
+    },
+    {
+      "id": "r5",
+      "name": "卫生间",
+      "type": "卫生间",
+      "length_mm": 2500,
+      "width_mm": 2000,
+      "height_mm": 2800
+    },
+    {
+      "id": "r6",
+      "name": "玄关走廊",
+      "type": "走廊",
+      "length_mm": 3000,
+      "width_mm": 1500,
+      "height_mm": 2800
+    }
+  ],
+  "walls": [
+    {
+      "id": "w1",
+      "start": [
+        0,
+        0,
+        0
+      ],
+      "end": [
+        5000,
+        0,
+        0
+      ],
+      "height": 2800,
+      "thickness": 120,
+      "room_id": "r1",
+      "openings": [
+        {
+          "type": "door",
+          "offset_mm": 2000,
+          "width_mm": 900,
+          "height_mm": 2100
+        }
+      ]
+    },
+    {
+      "id": "w2",
+      "start": [
+        5000,
+        0,
+        0
+      ],
+      "end": [
+        5000,
+        0,
+        4200
+      ],
+      "height": 2800,
+      "thickness": 120,
+      "room_id": "r1",
+      "openings": [
+        {
+          "type": "window",
+          "offset_mm": 1500,
+          "width_mm": 2000,
+          "height_mm": 1500,
+          "sill_height_mm": 900
+        }
+      ]
+    },
+    {
+      "id": "w3",
+      "start": [
+        5000,
+        0,
+        4200
+      ],
+      "end": [
+        0,
+        0,
+        4200
+      ],
+      "height": 2800,
+      "thickness": 120,
+      "room_id": "r1",
+      "openings": [
+        {
+          "type": "door",
+          "offset_mm": 3500,
+          "width_mm": 900,
+          "height_mm": 2100
+        }
+      ]
+    },
+    {
+      "id": "w4",
+      "start": [
+        0,
+        0,
+        4200
+      ],
+      "end": [
+        0,
+        0,
+        0
+      ],
+      "height": 2800,
+      "thickness": 120,
+      "room_id": "r1",
+      "openings": [
+        {
+          "type": "window",
+          "offset_mm": 1500,
+          "width_mm": 1800,
+          "height_mm": 1500,
+          "sill_height_mm": 900
+        }
+      ]
+    },
+    {
+      "id": "w5",
+      "start": [
+        5000,
+        0,
+        4200
+      ],
+      "end": [
+        9200,
+        0,
+        4200
+      ],
+      "height": 2800,
+      "thickness": 120,
+      "room_id": "r2"
+    },
+    {
+      "id": "w6",
+      "start": [
+        9200,
+        0,
+        4200
+      ],
+      "end": [
+        9200,
+        0,
+        700
+      ],
+      "height": 2800,
+      "thickness": 120,
+      "room_id": "r2",
+      "openings": [
+        {
+          "type": "window",
+          "offset_mm": 2000,
+          "width_mm": 1800,
+          "height_mm": 1500,
+          "sill_height_mm": 900
+        }
+      ]
+    },
+    {
+      "id": "w7",
+      "start": [
+        0,
+        0,
+        4200
+      ],
+      "end": [
+        -3500,
+        0,
+        4200
+      ],
+      "height": 2800,
+      "thickness": 120,
+      "room_id": "r3"
+    },
+    {
+      "id": "w8",
+      "start": [
+        -3500,
+        0,
+        4200
+      ],
+      "end": [
+        -3500,
+        0,
+        1200
+      ],
+      "height": 2800,
+      "thickness": 120,
+      "room_id": "r3",
+      "openings": [
+        {
+          "type": "window",
+          "offset_mm": 1500,
+          "width_mm": 1500,
+          "height_mm": 1500,
+          "sill_height_mm": 900
+        }
+      ]
+    },
+    {
+      "id": "w9",
+      "start": [
+        -3500,
+        0,
+        700
+      ],
+      "end": [
+        0,
+        0,
+        700
+      ],
+      "height": 2800,
+      "thickness": 120,
+      "room_id": "r4"
+    },
+    {
+      "id": "w10",
+      "start": [
+        5000,
+        0,
+        700
+      ],
+      "end": [
+        5000,
+        0,
+        0
+      ],
+      "height": 2800,
+      "thickness": 120,
+      "room_id": "r5"
+    }
+  ],
+  "doors": [
+    {
+      "id": "d1",
+      "wall_id": "w1",
+      "offset_mm": 2000,
+      "width_mm": 900,
+      "height_mm": 2100,
+      "type": "door",
+      "room_id": "r1"
+    },
+    {
+      "id": "d2",
+      "wall_id": "w3",
+      "offset_mm": 3500,
+      "width_mm": 900,
+      "height_mm": 2100,
+      "type": "door",
+      "room_id": "r1"
+    }
+  ],
+  "windows": [
+    {
+      "id": "win1",
+      "wall_id": "w2",
+      "offset_mm": 1500,
+      "width_mm": 2000,
+      "height_mm": 1500,
+      "type": "window",
+      "room_id": "r1"
+    },
+    {
+      "id": "win2",
+      "wall_id": "w4",
+      "offset_mm": 1500,
+      "width_mm": 1800,
+      "height_mm": 1500,
+      "type": "window",
+      "room_id": "r1"
+    },
+    {
+      "id": "win3",
+      "wall_id": "w6",
+      "offset_mm": 2000,
+      "width_mm": 1800,
+      "height_mm": 1500,
+      "type": "window",
+      "room_id": "r2"
+    },
+    {
+      "id": "win4",
+      "wall_id": "w8",
+      "offset_mm": 1500,
+      "width_mm": 1500,
+      "height_mm": 1500,
+      "type": "window",
+      "room_id": "r3"
+    }
+  ],
+  "furniture": []
+}

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 112.0 380.0" width="112.0mm" height="380.0mm">
+<style>
+  .wall { fill:#333; stroke:#000; stroke-width:0.5; }
+  .wall-thin { fill:#999; }
+  .door { fill:#fff; stroke:#00f; stroke-width:0.3; }
+  .door-swing { fill:none; stroke:#00f; stroke-width:0.2; stroke-dasharray:1,1; }
+  .window { fill:#cdf; stroke:#06f; stroke-width:0.3; }
+  .dim { stroke:#f00; stroke-width:0.15; fill:none; }
+  .dim-text { fill:#f00; font-size:2.5px; text-anchor:middle; font-family:sans-serif; }
+  .label { fill:#000; font-size:3px; text-anchor:middle; font-family:sans-serif; }
+  .section-marker { fill:none; stroke:#f00; stroke-width:0.4; }
+  .grid { stroke:#ddd; stroke-width:0.1; fill:none; }
+  .furniture { fill:#eee; stroke:#666; stroke-width:0.2; }
+  .hatch { fill:url(#hatch); stroke:#333; stroke-width:0.3; }
+  .beam { fill:#c60; stroke:#840; stroke-width:0.3; }
+  .column { fill:#666; stroke:#333; stroke-width:0.3; }
+</style>
+<defs>
+  <pattern id="hatch" width="2" height="2" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+    <line x1="0" y1="0" x2="0" y2="2" stroke="#999" stroke-width="0.3"/>
+  </pattern>
+</defs>
+
+<rect x="500.0" y="200.0" width="12.0" height="280.0" class="hatch"/>
+<rect x="470.0" y="480.0" width="72.0" height="12.0" fill="#999" stroke="#333" stroke-width="0.3"/>
+<rect x="480.0" y="170.0" width="52.0" height="30.0" class="beam"/>
+<rect x="498.5" y="200.0" width="1.5" height="280.0" fill="#ffe" stroke="#ccc" stroke-width="0.2"/>
+<rect x="512.0" y="200.0" width="1.5" height="280.0" fill="#ffe" stroke="#ccc" stroke-width="0.2"/>
+<rect x="498.5" y="472.0" width="15.0" height="8.0" fill="#8B4513" stroke="#5C3317" stroke-width="0.2"/>
+<line x1="450.0" y1="200.0" x2="450.0" y2="480.0" class="dim"/>
+<text x="445.0" y="340.0" class="dim-text">2800</text>
+<text x="552.0" y="250.0" class="label" font-size="2.5px" text-anchor="start">1. 顶面饰面层</text>
+<line x1="550.0" y1="249.0" x2="512.0" y2="249.0" stroke="#f00" stroke-width="0.1" stroke-dasharray="1,1"/>
+<text x="552.0" y="284.0" class="label" font-size="2.5px" text-anchor="start">2. 墙体基层</text>
+<line x1="550.0" y1="283.0" x2="512.0" y2="283.0" stroke="#f00" stroke-width="0.1" stroke-dasharray="1,1"/>
+<text x="552.0" y="368.0" class="label" font-size="2.5px" text-anchor="start">3. 踢脚线 H=80</text>
+<line x1="550.0" y1="367.0" x2="512.0" y2="367.0" stroke="#f00" stroke-width="0.1" stroke-dasharray="1,1"/>
+<text x="552.0" y="530.0" class="label" font-size="2.5px" text-anchor="start">4. 水泥砂浆找平层</text>
+<line x1="550.0" y1="529.0" x2="512.0" y2="529.0" stroke="#f00" stroke-width="0.1" stroke-dasharray="1,1"/>
+<text x="552.0" y="220.0" class="label" font-size="2.5px" text-anchor="start">5. 混凝土过梁</text>
+<line x1="550.0" y1="219.0" x2="512.0" y2="219.0" stroke="#f00" stroke-width="0.1" stroke-dasharray="1,1"/>
+</svg>

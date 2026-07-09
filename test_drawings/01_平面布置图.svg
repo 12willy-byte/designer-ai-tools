@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600.0 500.0" width="600.0mm" height="500.0mm">
+<style>
+  .wall { fill:#333; stroke:#000; stroke-width:0.5; }
+  .wall-thin { fill:#999; }
+  .door { fill:#fff; stroke:#00f; stroke-width:0.3; }
+  .door-swing { fill:none; stroke:#00f; stroke-width:0.2; stroke-dasharray:1,1; }
+  .window { fill:#cdf; stroke:#06f; stroke-width:0.3; }
+  .dim { stroke:#f00; stroke-width:0.15; fill:none; }
+  .dim-text { fill:#f00; font-size:2.5px; text-anchor:middle; font-family:sans-serif; }
+  .label { fill:#000; font-size:3px; text-anchor:middle; font-family:sans-serif; }
+  .section-marker { fill:none; stroke:#f00; stroke-width:0.4; }
+  .grid { stroke:#ddd; stroke-width:0.1; fill:none; }
+  .furniture { fill:#eee; stroke:#666; stroke-width:0.2; }
+  .hatch { fill:url(#hatch); stroke:#333; stroke-width:0.3; }
+  .beam { fill:#c60; stroke:#840; stroke-width:0.3; }
+  .column { fill:#666; stroke:#333; stroke-width:0.3; }
+</style>
+<defs>
+  <pattern id="hatch" width="2" height="2" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+    <line x1="0" y1="0" x2="0" y2="2" stroke="#999" stroke-width="0.3"/>
+  </pattern>
+</defs>
+
+<line x1="0" y1="0" x2="0" y2="500.0" class="grid"/>
+<line x1="100" y1="0" x2="100" y2="500.0" class="grid"/>
+<line x1="200" y1="0" x2="200" y2="500.0" class="grid"/>
+<line x1="300" y1="0" x2="300" y2="500.0" class="grid"/>
+<line x1="400" y1="0" x2="400" y2="500.0" class="grid"/>
+<line x1="500" y1="0" x2="500" y2="500.0" class="grid"/>
+<line x1="600" y1="0" x2="600" y2="500.0" class="grid"/>
+<line x1="0" y1="0" x2="600.0" y2="0" class="grid"/>
+<line x1="0" y1="100" x2="600.0" y2="100" class="grid"/>
+<line x1="0" y1="200" x2="600.0" y2="200" class="grid"/>
+<line x1="0" y1="300" x2="600.0" y2="300" class="grid"/>
+<line x1="0" y1="400" x2="600.0" y2="400" class="grid"/>
+<line x1="0" y1="500" x2="600.0" y2="500" class="grid"/>
+<polygon points="1000.0,1006.0 1400.0,1006.0 1400.0,994.0 1000.0,994.0" class="wall-thin"/>
+<polygon points="1394.0,1000.0 1394.0,1300.0 1406.0,1300.0 1406.0,1000.0" class="wall-thin"/>
+<polygon points="1400.0,1294.0 1000.0,1294.0 1000.0,1306.0 1400.0,1306.0" class="wall-thin"/>
+<polygon points="1006.0,1300.0 1006.0,1000.0 994.0,1000.0 994.0,1300.0" class="wall-thin"/>
+<rect x="1105.0" y="999.0" width="90.0" height="2" class="door"/>
+<path d="M 1150.0,1000.0 Q 1195.0,985.0 1240.0,1000.0" class="door-swing"/>
+<rect x="1325.0" y="1099.5" width="150.0" height="1" class="window"/>
+<rect x="1200.0" y="1110.0" width="200.0" height="80.0" class="furniture"/>
+<text x="1300.0" y="1151.0" class="label" font-size="2px">Sofa</text>
+<rect x="1140.0" y="1120.0" width="120.0" height="60.0" class="furniture"/>
+<text x="1200.0" y="1151.0" class="label" font-size="2px">Tabl</text>
+<line x1="1000.0" y1="985.0" x2="1400.0" y2="985.0" class="dim"/>
+<text x="1200.0" y="984.0" class="dim-text">4000</text>
+<line x1="1400.0" y1="1315.0" x2="1000.0" y2="1315.0" class="dim"/>
+<text x="1200.0" y="1314.0" class="dim-text">4000</text>
+<text x="1000.0" y="1000.0" class="label" font-weight="bold">Living Room</text>
+</svg>

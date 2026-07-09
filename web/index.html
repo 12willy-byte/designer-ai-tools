@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Designer AI Assistant</title>
+<style>
+:root{--bg:#f0f2f5;--card:#fff;--primary:#4a90d9;--danger:#e74c3c;--success:#27ae60;--text:#333;--muted:#999}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Microsoft YaHei','PingFang SC',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+header{background:linear-gradient(135deg,#1a1a2e,#16213e);color:#fff;padding:15px 30px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 2px 10px rgba(0,0,0,0.2)}
+header h1{font-size:20px;font-weight:600}
+header .status{font-size:12px;padding:4px 12px;border-radius:12px;background:rgba(255,255,255,0.15)}
+main{max-width:1400px;margin:0 auto;padding:20px;display:grid;grid-template-columns:320px 1fr;gap:20px}
+.sidebar{display:flex;flex-direction:column;gap:15px}
+.card{background:var(--card);border-radius:10px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
+.card h3{font-size:14px;color:var(--muted);margin-bottom:12px;text-transform:uppercase;letter-spacing:0.5px}
+.btn{display:inline-block;padding:10px 20px;border:none;border-radius:6px;font-size:14px;cursor:pointer;font-weight:500;transition:all 0.2s}
+.btn-primary{background:var(--primary);color:#fff;width:100%}
+.btn-primary:hover{background:#357abd}
+.btn-primary:disabled{background:#ccc;cursor:not-allowed}
+.btn-success{background:var(--success);color:#fff}
+.btn-danger{background:var(--danger);color:#fff}
+.upload-zone{border:2px dashed #ddd;border-radius:8px;padding:25px;text-align:center;cursor:pointer;transition:all 0.2s;margin-bottom:10px}
+.upload-zone:hover{border-color:var(--primary);background:#f0f7ff}
+.upload-zone input{display:none}
+.upload-zone .icon{font-size:30px;margin-bottom:8px}
+.upload-zone .text{font-size:13px;color:var(--muted)}
+.file-list{font-size:12px;color:var(--muted);margin-top:8px}
+.progress-bar{height:4px;background:#eee;border-radius:2px;margin:15px 0;overflow:hidden}
+.progress-bar .fill{height:100%;background:var(--primary);width:0%;transition:width 0.3s}
+.tabs{display:flex;gap:5px;margin-bottom:15px;flex-wrap:wrap}
+.tab{padding:8px 16px;border:none;background:#eee;border-radius:6px;font-size:13px;cursor:pointer;transition:all 0.2s}
+.tab.active{background:var(--primary);color:#fff}
+.tab-content{display:none}
+.tab-content.active{display:block}
+.result-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
+.metric{background:#f8f9fa;border-radius:8px;padding:15px;text-align:center}
+.metric .value{font-size:28px;font-weight:700;color:var(--primary)}
+.metric .label{font-size:11px;color:var(--muted);margin-top:4px}
+.metric.warn .value{color:var(--danger)}
+.metric.ok .value{color:var(--success)}
+.issue-list{list-style:none}
+.issue-list li{padding:8px 12px;border-bottom:1px solid #eee;font-size:13px}
+.issue-list li:before{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px}
+.issue-list li.crit:before{background:var(--danger)}
+.issue-list li.major:before{background:#f39c12}
+.issue-list li.minor:before{background:#3498db}
+pre{background:#1a1a2e;color:#0f0;padding:15px;border-radius:8px;font-size:12px;overflow-x:auto;max-height:400px;overflow-y:auto}
+img,video{max-width:100%;border-radius:8px;margin-top:10px}
+.empty{text-align:center;padding:60px 20px;color:var(--muted)}
+.empty .icon{font-size:60px;margin-bottom:15px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Designer AI Assistant</h1>
+  <span class="status" id="aiStatus">AI: Checking...</span>
+</header>
+
+<main>
+  <div class="sidebar">
+    <div class="card">
+      <h3>Project Setup</h3>
+      <div class="upload-zone" onclick="document.getElementById('photoUpload').click()">
+        <div class="icon">Photo</div>
+        <div class="text">Upload room photos</div>
+        <input type="file" id="photoUpload" multiple accept="image/*" onchange="handleUpload(this,'photos')">
+      </div>
+      <div class="upload-zone" onclick="document.getElementById('cadUpload').click()">
+        <div class="icon">CAD</div>
+        <div class="text">Upload DXF floor plan</div>
+        <input type="file" id="cadUpload" accept=".dxf" onchange="handleUpload(this,'cad')">
+      </div>
+      <div class="upload-zone" onclick="document.getElementById('roomplanUpload').click()">
+        <div class="icon">RoomPlan</div>
+        <div class="text">Upload RoomPlan JSON</div>
+        <input type="file" id="roomplanUpload" accept=".json" onchange="handleUpload(this,'roomplan')">
+      </div>
+      <div class="file-list" id="fileList"></div>
+      
+      <label style="font-size:13px;display:block;margin:10px 0 5px">Design Style</label>
+      <select id="styleSelect" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px">
+        <option value="modern_minimalist">Modern Minimalist</option>
+        <option value="nordic">Nordic</option>
+        <option value="new_chinese">New Chinese</option>
+        <option value="japanese">Japanese</option>
+        <option value="industrial">Industrial</option>
+        <option value="french">French</option>
+      </select>
+      
+      <label style="font-size:13px;display:block;margin:10px 0 5px">Region</label>
+      <select id="regionSelect" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px">
+        <option value="一线">Tier 1 (Beijing/Shanghai)</option>
+        <option value="新一线">New Tier 1</option>
+        <option value="二线" selected>Tier 2</option>
+        <option value="三线">Tier 3</option>
+      </select>
+      
+      <div class="progress-bar"><div class="fill" id="progressBar"></div></div>
+      
+      <button class="btn btn-primary" id="runBtn" onclick="runPipeline()" disabled>
+        Run Pipeline
+      </button>
+      <p style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px" id="statusText">
+        Upload data to start
+      </p>
+    </div>
+    
+    <div class="card">
+      <h3>Quick Actions</h3>
+      <button class="btn btn-success" style="width:100%;margin-bottom:8px" onclick="generateDemo()">
+        Generate Demo
+      </button>
+      <button class="btn" style="width:100%;background:#eee" onclick="downloadAll()">
+        Download All Deliverables
+      </button>
+    </div>
+  </div>
+  
+  <div>
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('overview')">Overview</button>
+      <button class="tab" onclick="switchTab('floorplan')">Floor Plan</button>
+      <button class="tab" onclick="switchTab('3d')">3D Preview</button>
+      <button class="tab" onclick="switchTab('budget')">Budget</button>
+      <button class="tab" onclick="switchTab('materials')">Materials</button>
+      <button class="tab" onclick="switchTab('critique')">Critique</button>
+      <button class="tab" onclick="switchTab('drawings')">Drawings</button>
+      <button class="tab" onclick="switchTab('raw')">Raw Output</button>
+    </div>
+    
+    <div id="overview" class="tab-content active">
+      <div class="result-grid" id="overviewGrid">
+        <div class="empty"><div class="icon">Ready</div><p>Run the pipeline to see results</p></div>
+      </div>
+    </div>
+    
+    <div id="floorplan" class="tab-content">
+      <div id="floorplanContent" class="empty">
+        <div class="icon">Floor Plan</div><p>Will appear here after pipeline runs</p>
+      </div>
+    </div>
+    
+    <div id="3d" class="tab-content">
+      <div id="threeDContent" class="empty">
+        <div class="icon">3D</div><p>3D preview will appear here</p>
+      </div>
+    </div>
+    
+    <div id="budget" class="tab-content">
+      <div id="budgetContent"></div>
+    </div>
+    
+    <div id="materials" class="tab-content">
+      <div id="materialsContent"></div>
+    </div>
+    
+    <div id="critique" class="tab-content">
+      <div id="critiqueContent"></div>
+    </div>
+    
+    <div id="drawings" class="tab-content">
+      <div id="drawingsContent"></div>
+    </div>
+    
+    <div id="raw" class="tab-content">
+      <pre id="rawOutput">No data yet</pre>
+    </div>
+  </div>
+</main>
+
+<script>
+let projectData = {photos:[],cad:null,roomplan:null,results:null};
+let uploadedFiles = [];
+
+function handleUpload(input, type){
+  if(type==='photos'){
+    for(let f of input.files){
+      projectData.photos.push(f);
+      uploadedFiles.push({name:f.name,type:'photo'});
+    }
+  }else if(type==='cad'){
+    projectData.cad = input.files[0];
+    uploadedFiles.push({name:input.files[0].name,type:'cad'});
+  }else if(type==='roomplan'){
+    projectData.roomplan = input.files[0];
+    uploadedFiles.push({name:input.files[0].name,type:'roomplan'});
+  }
+  updateFileList();
+  checkReady();
+}
+
+function updateFileList(){
+  document.getElementById('fileList').innerHTML = uploadedFiles.map(f=>
+    f.type + ': ' + f.name
+  ).join('<br>');
+}
+
+function checkReady(){
+  let hasData = projectData.photos.length>0 || projectData.cad || projectData.roomplan;
+  document.getElementById('runBtn').disabled = !hasData;
+  document.getElementById('statusText').textContent = hasData ? 'Ready to run' : 'Upload data to start';
+}
+
+async function runPipeline(){
+  let btn = document.getElementById('runBtn');
+  btn.disabled = true;
+  btn.textContent = 'Running...';
+  setProgress(10);
+  
+  try{
+    // Build form data
+    let form = new FormData();
+    form.append('style', document.getElementById('styleSelect').value);
+    form.append('region', document.getElementById('regionSelect').value);
+    
+    for(let f of projectData.photos) form.append('photos', f);
+    if(projectData.cad) form.append('cad', projectData.cad);
+    if(projectData.roomplan) form.append('roomplan', projectData.roomplan);
+    
+    setProgress(30);
+    
+    let resp = await fetch('/api/run', {method:'POST',body:form});
+    setProgress(70);
+    
+    if(!resp.ok) throw new Error('Pipeline failed: ' + resp.status);
+    
+    projectData.results = await resp.json();
+    setProgress(100);
+    
+    renderResults(projectData.results);
+    document.getElementById('statusText').textContent = 'Pipeline completed!';
+  }catch(e){
+    document.getElementById('statusText').textContent = 'Error: ' + e.message;
+    setProgress(0);
+  }finally{
+    btn.disabled = false;
+    btn.textContent = 'Run Pipeline';
+  }
+}
+
+async function generateDemo(){
+  let btn = document.getElementById('runBtn');
+  btn.disabled = true; btn.textContent = 'Generating demo...';
+  setProgress(10);
+  
+  try{
+    let resp = await fetch('/api/demo');
+    setProgress(50);
+    projectData.results = await resp.json();
+    setProgress(100);
+    renderResults(projectData.results);
+    document.getElementById('statusText').textContent = 'Demo generated!';
+  }catch(e){
+    document.getElementById('statusText').textContent = 'Error: ' + e.message;
+  }finally{
+    btn.disabled = false; btn.textContent = 'Run Pipeline';
+  }
+}
+
+function renderResults(data){
+  // Overview
+  let grid = document.getElementById('overviewGrid');
+  let metrics = [
+    ['Rooms', data.rooms||0, ''],
+    ['Area', (data.area||0)+'m2', ''],
+    ['Budget', (data.cost||0).toLocaleString(), ''],
+    ['Critique', (data.critique_score||0)+'/100', data.critique_score<60?'warn':'ok'],
+    ['Validation', (data.validation||0)+'/100', data.validation<70?'warn':'ok'],
+    ['Layout', (data.layout||0)+' pcs', ''],
+    ['Electrical', (data.electrical||0)+' pts', ''],
+    ['Schedule', (data.schedule||0)+' days', ''],
+  ];
+  grid.innerHTML = metrics.map(([label,value,cls])=>
+    '<div class="metric '+cls+'"><div class="value">'+value+'</div><div class="label">'+label+'</div></div>'
+  ).join('');
+  
+  // Critique
+  if(data.critique_items){
+    document.getElementById('critiqueContent').innerHTML =
+      '<h3 style="margin-bottom:10px">Issues Found</h3><ul class="issue-list">'+
+      data.critique_items.map(i=>'<li class="'+i.sev+'">['+i.cat+'] '+i.title+'</li>').join('')+
+      '</ul>';
+  }
+  
+  // Raw
+  document.getElementById('rawOutput').textContent = JSON.stringify(data, null, 2);
+}
+
+function setProgress(pct){
+  document.getElementById('progressBar').style.width = pct+'%';
+}
+
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+  document.querySelector('.tab[onclick*="'+name+'"]').classList.add('active');
+  document.getElementById(name).classList.add('active');
+}
+
+async function downloadAll(){
+  window.open('/api/download','_blank');
+}
+
+// Check AI status
+async function checkAI(){
+  try{
+    let r = await fetch('/api/status');
+    let d = await r.json();
+    document.getElementById('aiStatus').textContent = 'AI: ' + (d.ai_available ? 'Connected' : 'Offline (mock)');
+    document.getElementById('aiStatus').style.background = d.ai_available ? 'rgba(39,174,96,0.3)' : 'rgba(231,76,60,0.3)';
+  }catch(e){
+    document.getElementById('aiStatus').textContent = 'AI: Server offline';
+  }
+}
+
+checkAI();
+checkReady();
+</script>
+</body>
+</html>

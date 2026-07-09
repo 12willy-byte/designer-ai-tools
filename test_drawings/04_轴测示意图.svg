@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" width="600mm" height="400mm">
+<style>
+  .wall { fill:#333; stroke:#000; stroke-width:0.5; }
+  .wall-thin { fill:#999; }
+  .door { fill:#fff; stroke:#00f; stroke-width:0.3; }
+  .door-swing { fill:none; stroke:#00f; stroke-width:0.2; stroke-dasharray:1,1; }
+  .window { fill:#cdf; stroke:#06f; stroke-width:0.3; }
+  .dim { stroke:#f00; stroke-width:0.15; fill:none; }
+  .dim-text { fill:#f00; font-size:2.5px; text-anchor:middle; font-family:sans-serif; }
+  .label { fill:#000; font-size:3px; text-anchor:middle; font-family:sans-serif; }
+  .section-marker { fill:none; stroke:#f00; stroke-width:0.4; }
+  .grid { stroke:#ddd; stroke-width:0.1; fill:none; }
+  .furniture { fill:#eee; stroke:#666; stroke-width:0.2; }
+  .hatch { fill:url(#hatch); stroke:#333; stroke-width:0.3; }
+  .beam { fill:#c60; stroke:#840; stroke-width:0.3; }
+  .column { fill:#666; stroke:#333; stroke-width:0.3; }
+</style>
+<defs>
+  <pattern id="hatch" width="2" height="2" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+    <line x1="0" y1="0" x2="0" y2="2" stroke="#999" stroke-width="0.3"/>
+  </pattern>
+</defs>
+
+<line x1="-349.5" y1="825.0" x2="-782.5" y2="575.0" class="grid"/>
+<line x1="906.2" y1="850.0" x2="1425.8" y2="550.0" class="grid"/>
+<line x1="-176.3" y1="725.0" x2="-609.3" y2="475.0" class="grid"/>
+<line x1="733.0" y1="750.0" x2="1252.6" y2="450.0" class="grid"/>
+<line x1="-3.1" y1="625.0" x2="-436.1" y2="375.0" class="grid"/>
+<line x1="559.8" y1="650.0" x2="1079.4" y2="350.0" class="grid"/>
+<line x1="170.1" y1="525.0" x2="-262.9" y2="275.0" class="grid"/>
+<line x1="386.6" y1="550.0" x2="906.2" y2="250.0" class="grid"/>
+<line x1="343.3" y1="425.0" x2="-89.7" y2="175.0" class="grid"/>
+<line x1="213.4" y1="450.0" x2="733.0" y2="150.0" class="grid"/>
+<line x1="516.5" y1="325.0" x2="83.5" y2="75.0" class="grid"/>
+<line x1="40.2" y1="350.0" x2="559.8" y2="50.0" class="grid"/>
+<line x1="689.7" y1="225.0" x2="256.7" y2="-25.0" class="grid"/>
+<line x1="-133.0" y1="250.0" x2="386.6" y2="-50.0" class="grid"/>
+<line x1="862.9" y1="125.0" x2="429.9" y2="-125.0" class="grid"/>
+<line x1="-306.2" y1="150.0" x2="213.4" y2="-150.0" class="grid"/>
+<line x1="1036.1" y1="25.0" x2="603.1" y2="-225.0" class="grid"/>
+<line x1="-479.4" y1="50.0" x2="40.2" y2="-250.0" class="grid"/>
+<line x1="1209.3" y1="-75.0" x2="776.3" y2="-325.0" class="grid"/>
+<line x1="-652.6" y1="-50.0" x2="-133.0" y2="-350.0" class="grid"/>
+<line x1="1382.5" y1="-175.0" x2="949.5" y2="-425.0" class="grid"/>
+<line x1="-825.8" y1="-150.0" x2="-306.2" y2="-450.0" class="grid"/>
+<line x1="256.7" y1="375.0" x2="603.1" y2="175.0" stroke="#333" stroke-width="0.5"/>
+<line x1="256.7" y1="95.0" x2="603.1" y2="-105.0" stroke="#333" stroke-width="0.5"/>
+<line x1="603.1" y1="175.0" x2="343.3" y2="25.0" stroke="#333" stroke-width="0.5"/>
+<line x1="603.1" y1="-105.0" x2="343.3" y2="-255.0" stroke="#333" stroke-width="0.5"/>
+<line x1="343.3" y1="25.0" x2="-3.1" y2="225.0" stroke="#333" stroke-width="0.5"/>
+<line x1="343.3" y1="-255.0" x2="-3.1" y2="-55.0" stroke="#333" stroke-width="0.5"/>
+<line x1="-3.1" y1="225.0" x2="256.7" y2="375.0" stroke="#333" stroke-width="0.5"/>
+<line x1="-3.1" y1="-55.0" x2="256.7" y2="95.0" stroke="#333" stroke-width="0.5"/>
+<rect x="286.6" y="70.0" width="200.0" height="80.0" class="furniture"/>
+<rect x="240.0" y="125.0" width="120.0" height="75.0" class="furniture"/>
+</svg>

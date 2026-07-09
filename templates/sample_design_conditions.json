@@ -1,0 +1,78 @@
+{
+  "project": {
+    "name": "张先生雅居",
+    "address": "成都市高新区",
+    "house_type": "平层",
+    "area_m2": 52.56,
+    "design_type": "全案设计",
+    "expected_completion": "2026-09",
+    "designer": "AI助手"
+  },
+  "family": {
+    "residents": "3人",
+    "composition": "夫妻+5岁女儿",
+    "children_ages": "5岁",
+    "elderly": "否",
+    "pets": "猫",
+    "work_from_home": "偶尔",
+    "entertain_frequency": "偶尔",
+    "cooking_frequency": "每天",
+    "dining_habit": "餐桌",
+    "movement_preference": "流畅",
+    "storage_need": "较强",
+    "hobbies": "阅读/观影"
+  },
+  "style": {
+    "primary_style": "现代简约",
+    "color_tone": "暖色调",
+    "keywords": "温馨,明亮,收纳强",
+    "floor_material": "木纹砖",
+    "wall_material": "乳胶漆",
+    "ceiling_type": "边吊"
+  },
+  "rooms": [
+    {
+      "name": "客厅",
+      "requirements": {
+        "功能": "观影+亲子互动",
+        "特殊": "需要猫爬架区域"
+      }
+    },
+    {
+      "name": "主卧",
+      "requirements": {
+        "功能": "睡眠+阅读",
+        "特殊": "飘窗利用"
+      }
+    },
+    {
+      "name": "厨房",
+      "requirements": {
+        "功能": "封闭式中厨",
+        "特殊": "需要洗碗机"
+      }
+    },
+    {
+      "name": "卫生间",
+      "requirements": {
+        "功能": "干湿分离",
+        "特殊": "智能马桶预留"
+      }
+    }
+  ],
+  "budget": {
+    "total_budget": 15,
+    "hard_decoration": 10,
+    "soft_decoration": 3,
+    "appliances": 2,
+    "notes": "不含家电"
+  },
+  "special_requirements": {
+    "环保": "ENF级",
+    "智能": "基础灯控+窗帘",
+    "地暖": "无",
+    "新风": "无",
+    "中央空调": "风管机"
+  },
+  "source_note": "sample"
+}

@@ -1,0 +1,405 @@
+{
+  "地板": {
+    "橡木地板": {
+      "roughness": 0.6,
+      "color": "#D4A76A",
+      "reflectivity": 0.1,
+      "brand": "大自然/圣象",
+      "price_range": "200-500元/m2"
+    },
+    "胡桃木地板": {
+      "roughness": 0.5,
+      "color": "#5C4033",
+      "reflectivity": 0.1,
+      "brand": "书香门地/安信",
+      "price_range": "300-800元/m2"
+    },
+    "灰色瓷砖800": {
+      "roughness": 0.2,
+      "color": "#B0B0B0",
+      "reflectivity": 0.4,
+      "brand": "马可波罗/东鹏",
+      "price_range": "80-200元/m2"
+    },
+    "大理石瓷砖": {
+      "roughness": 0.1,
+      "color": "#F5F5F0",
+      "reflectivity": 0.6,
+      "brand": "诺贝尔/欧神诺",
+      "price_range": "100-300元/m2"
+    },
+    "木纹砖": {
+      "roughness": 0.3,
+      "color": "#C4A484",
+      "reflectivity": 0.15,
+      "brand": "金意陶/ICC",
+      "price_range": "80-200元/m2"
+    },
+    "微水泥地面": {
+      "roughness": 0.4,
+      "color": "#E8E0D8",
+      "reflectivity": 0.05,
+      "brand": "TT/磐多魔",
+      "price_range": "300-600元/m2"
+    },
+    "强化地板": {
+      "roughness": 0.5,
+      "color": "#C4A882",
+      "reflectivity": 0.05,
+      "brand": "圣象/大自然",
+      "price_range": "80-200元/m2"
+    },
+    "SPC石塑地板": {
+      "roughness": 0.4,
+      "color": "#D4C4A8",
+      "reflectivity": 0.1,
+      "brand": "乐迈/肯帝亚",
+      "price_range": "60-150元/m2"
+    },
+    "实木复合地板": {
+      "roughness": 0.55,
+      "color": "#B8956A",
+      "reflectivity": 0.12,
+      "brand": "书香门地/世友",
+      "price_range": "200-500元/m2"
+    },
+    "鱼骨拼地板": {
+      "roughness": 0.55,
+      "color": "#C4A484",
+      "reflectivity": 0.12,
+      "brand": "安信/泛美",
+      "price_range": "400-1000元/m2",
+      "note": "损耗率15-20%"
+    },
+    "大理石": {
+      "roughness": 0.05,
+      "color": "#F8F8F0",
+      "reflectivity": 0.7,
+      "brand": "高时/环球",
+      "price_range": "500-2000元/m2"
+    },
+    "岩板地面": {
+      "roughness": 0.1,
+      "color": "#F5F0E8",
+      "reflectivity": 0.5,
+      "brand": "德利丰/拉米娜",
+      "price_range": "500-1500元/m2"
+    },
+    "水磨石": {
+      "roughness": 0.3,
+      "color": "#E8E0D0",
+      "reflectivity": 0.2,
+      "brand": "现场制作",
+      "price_range": "100-200元/m2"
+    },
+    "环氧地坪": {
+      "roughness": 0.1,
+      "color": "#D0D0D0",
+      "reflectivity": 0.5,
+      "brand": "西卡/巴斯夫",
+      "price_range": "60-120元/m2"
+    }
+  },
+  "墙面": {
+    "白色乳胶漆": {
+      "roughness": 0.9,
+      "color": "#FAFAFA",
+      "reflectivity": 0,
+      "brand": "立邦/多乐士",
+      "price_range": "30-60元/m2"
+    },
+    "暖灰乳胶漆": {
+      "roughness": 0.9,
+      "color": "#F5F0EB",
+      "reflectivity": 0,
+      "brand": "立邦/多乐士",
+      "price_range": "30-60元/m2"
+    },
+    "微水泥墙面": {
+      "roughness": 0.4,
+      "color": "#E8E0D8",
+      "reflectivity": 0.05,
+      "brand": "TT/磐多魔",
+      "price_range": "300-600元/m2"
+    },
+    "木饰面": {
+      "roughness": 0.5,
+      "color": "#8B7355",
+      "reflectivity": 0.1,
+      "brand": "科定/兔宝宝",
+      "price_range": "200-500元/m2"
+    },
+    "墙布": {
+      "roughness": 0.8,
+      "color": "#F0EDE5",
+      "reflectivity": 0,
+      "brand": "柔然/玛堡",
+      "price_range": "80-200元/m2"
+    },
+    "艺术漆": {
+      "roughness": 0.4,
+      "color": "#F0EBE0",
+      "reflectivity": 0.1,
+      "brand": "卡百利/瓦帕",
+      "price_range": "80-200元/m2"
+    },
+    "护墙板": {
+      "roughness": 0.5,
+      "color": "#8B7355",
+      "reflectivity": 0.08,
+      "brand": "科定/兔宝宝",
+      "price_range": "200-500元/m2"
+    },
+    "岩板": {
+      "roughness": 0.1,
+      "color": "#F5F0E8",
+      "reflectivity": 0.6,
+      "brand": "德利丰/新明珠",
+      "price_range": "300-1000元/m2"
+    },
+    "硅藻泥": {
+      "roughness": 0.95,
+      "color": "#F8F4EC",
+      "reflectivity": 0,
+      "brand": "蓝天豚/绿森林",
+      "price_range": "60-150元/m2"
+    },
+    "格栅板": {
+      "roughness": 0.55,
+      "color": "#5C4033",
+      "reflectivity": 0.05,
+      "brand": "科定/兔宝宝",
+      "price_range": "200-400元/m2"
+    },
+    "大理石墙面": {
+      "roughness": 0.05,
+      "color": "#F8F8F0",
+      "reflectivity": 0.65,
+      "brand": "高时/环球",
+      "price_range": "800-3000元/m2"
+    },
+    "软包": {
+      "roughness": 0.9,
+      "color": "#D4C4A8",
+      "reflectivity": 0,
+      "brand": "定制",
+      "price_range": "200-500元/m2"
+    },
+    "海基布": {
+      "roughness": 0.9,
+      "color": "#FAFAF5",
+      "reflectivity": 0,
+      "brand": "多乐士/立邦",
+      "price_range": "30-60元/m2"
+    }
+  },
+  "天花板": {
+    "白色平顶": {
+      "roughness": 0.95,
+      "color": "#FFFFFF",
+      "reflectivity": 0,
+      "brand": "龙牌/泰山",
+      "price_range": "80-120元/m2"
+    },
+    "悬浮吊顶": {
+      "roughness": 0.95,
+      "color": "#FFFFFF",
+      "reflectivity": 0,
+      "brand": "龙牌/泰山",
+      "price_range": "150-250元/m2"
+    },
+    "边吊": {
+      "roughness": 0.95,
+      "color": "#FFFFFF",
+      "reflectivity": 0,
+      "brand": "龙牌/泰山",
+      "price_range": "80-120元/m"
+    },
+    "铝扣板": {
+      "roughness": 0.2,
+      "color": "#F0F0F0",
+      "reflectivity": 0.3,
+      "brand": "友邦/奥普",
+      "price_range": "80-150元/m2"
+    },
+    "格栅吊顶": {
+      "roughness": 0.6,
+      "color": "#2A2A2A",
+      "reflectivity": 0.05,
+      "brand": "定制",
+      "price_range": "200-400元/m2"
+    },
+    "木饰面吊顶": {
+      "roughness": 0.55,
+      "color": "#8B7355",
+      "reflectivity": 0.08,
+      "brand": "科定/兔宝宝",
+      "price_range": "300-600元/m2"
+    },
+    "软膜天花": {
+      "roughness": 0.1,
+      "color": "#FFFFFF",
+      "reflectivity": 0.3,
+      "brand": "杜邦/定制",
+      "price_range": "200-400元/m2"
+    },
+    "矿棉板": {
+      "roughness": 0.9,
+      "color": "#F8F8F8",
+      "reflectivity": 0,
+      "brand": "阿姆斯壮/星牌",
+      "price_range": "60-120元/m2"
+    }
+  },
+  "家具材质": {
+    "胡桃木": {
+      "roughness": 0.5,
+      "color": "#5C4033",
+      "reflectivity": 0.1,
+      "brand": "Fritz Hansen/Hay"
+    },
+    "白橡木": {
+      "roughness": 0.55,
+      "color": "#D4A76A",
+      "reflectivity": 0.1,
+      "brand": "Muuto/Karimoku"
+    },
+    "不锈钢": {
+      "roughness": 0.1,
+      "color": "#C0C0C0",
+      "reflectivity": 0.9,
+      "brand": "Vitra/Knoll"
+    },
+    "黄铜": {
+      "roughness": 0.2,
+      "color": "#C5A059",
+      "reflectivity": 0.7,
+      "brand": "Tom Dixon"
+    },
+    "皮革": {
+      "roughness": 0.7,
+      "color": "#8B4513",
+      "reflectivity": 0.15,
+      "brand": "Poltrona Frau/B&B"
+    },
+    "布艺": {
+      "roughness": 0.85,
+      "color": "#D3CFC7",
+      "reflectivity": 0.02,
+      "brand": "Kvadrat/Maharam"
+    },
+    "丝绒": {
+      "roughness": 0.6,
+      "color": "#2F4F4F",
+      "reflectivity": 0.3,
+      "brand": "Dedar/Rubelli"
+    }
+  },
+  "台面": {
+    "石英石": {
+      "roughness": 0.2,
+      "color": "#F5F5F0",
+      "reflectivity": 0.4,
+      "brand": "凯撒/中迅",
+      "price_range": "500-1500元/m"
+    },
+    "岩板台面": {
+      "roughness": 0.05,
+      "color": "#F0EDE5",
+      "reflectivity": 0.5,
+      "brand": "德利丰/拉米娜",
+      "price_range": "1000-3000元/m"
+    },
+    "不锈钢台面": {
+      "roughness": 0.1,
+      "color": "#D0D0D0",
+      "reflectivity": 0.7,
+      "brand": "定制",
+      "price_range": "300-800元/m"
+    },
+    "实木台面": {
+      "roughness": 0.55,
+      "color": "#C4A484",
+      "reflectivity": 0.1,
+      "brand": "定制",
+      "price_range": "500-1500元/m"
+    }
+  },
+  "五金": {
+    "拉丝镍": {
+      "roughness": 0.3,
+      "color": "#C8C8C0",
+      "reflectivity": 0.5,
+      "brand": "Blum/DTC"
+    },
+    "黑色哑光": {
+      "roughness": 0.5,
+      "color": "#1A1A1A",
+      "reflectivity": 0.05,
+      "brand": "Hafele/海蒂诗"
+    },
+    "镀铬": {
+      "roughness": 0.05,
+      "color": "#E8E8E8",
+      "reflectivity": 0.95,
+      "brand": "Grohe/Hansgrohe"
+    },
+    "金色拉丝": {
+      "roughness": 0.3,
+      "color": "#D4B896",
+      "reflectivity": 0.6,
+      "brand": "汉斯格雅/科勒"
+    }
+  },
+  "灯具": {
+    "筒灯_4000K": {
+      "roughness": 0.1,
+      "color": "#FFFFFF",
+      "reflectivity": 0.3,
+      "brand": "西顿/企一",
+      "price_range": "50-200元/个"
+    },
+    "射灯_3000K": {
+      "roughness": 0.1,
+      "color": "#FFFFFF",
+      "reflectivity": 0.3,
+      "brand": "西顿/雷士",
+      "price_range": "80-300元/个"
+    },
+    "磁吸轨道灯": {
+      "roughness": 0.2,
+      "color": "#1A1A1A",
+      "reflectivity": 0.1,
+      "brand": "FLUA/西顿",
+      "price_range": "200-500元/m"
+    },
+    "线性灯带": {
+      "roughness": 0.5,
+      "color": "#FFFFFF",
+      "reflectivity": 0.2,
+      "brand": "欧普/雷士",
+      "price_range": "50-150元/m"
+    },
+    "装饰吊灯": {
+      "roughness": 0.3,
+      "color": "#D4B896",
+      "reflectivity": 0.5,
+      "brand": "Flos/Moooi",
+      "price_range": "2000-20000元/个"
+    },
+    "壁灯": {
+      "roughness": 0.3,
+      "color": "#D4B896",
+      "reflectivity": 0.4,
+      "brand": "&Tradition/Artemide",
+      "price_range": "500-3000元/个"
+    },
+    "落地灯": {
+      "roughness": 0.4,
+      "color": "#1A1A1A",
+      "reflectivity": 0.3,
+      "brand": "Flos/Louis Poulsen",
+      "price_range": "1000-8000元/个"
+    }
+  }
+}

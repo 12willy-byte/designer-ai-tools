@@ -1,0 +1,74 @@
+﻿{
+  "description": "中国室内装修竣工验收标准 (GB50210 + GB50327 + GB50300)",
+  "items": {
+    "水电": [
+      {"item": "管线横平竖直", "standard": "偏差<5mm/m", "method": "水平尺测量"},
+      {"item": "打压测试", "standard": "0.8MPa/30min不掉压", "method": "手动打压泵"},
+      {"item": "绝缘电阻", "standard": ">0.5M\u03a9", "method": "兆欧表"},
+      {"item": "等电位连接", "standard": "卫生间必须做", "method": "目测+万用表"},
+      {"item": "强弱电间距", "standard": ">300mm", "method": "卷尺"},
+      {"item": "底盒水平", "standard": "同一房间高度一致", "method": "水平仪"},
+      {"item": "排水坡度", "standard": "\u22651%", "method": "水平尺+卷尺"},
+      {"item": "地漏排水", "standard": "畅通无积水", "method": "泼水试验"},
+      {"item": "下水隔音", "standard": "包隔音棉+砌砖", "method": "目测"},
+      {"item": "配电箱标识", "standard": "回路标签清晰", "method": "目测"}
+    ],
+    "泥瓦": [
+      {"item": "空鼓率", "standard": "单块<5%/整面<3%", "method": "空鼓锤敲击"},
+      {"item": "平整度", "standard": "2m靠尺<3mm", "method": "靠尺+塞尺"},
+      {"item": "垂直度", "standard": "2m靠尺<3mm", "method": "靠尺+塞尺"},
+      {"item": "阴阳角方正", "standard": "<3mm", "method": "直角尺"},
+      {"item": "缝隙宽度", "standard": "2-3mm均匀", "method": "塞尺"},
+      {"item": "墙地对缝", "standard": "墙面缝和地面缝对齐", "method": "目测"},
+      {"item": "闭水试验", "standard": "48h无渗漏", "method": "蓄水+楼下检查"},
+      {"item": "防水高度", "standard": "淋浴区1800mm/其他300mm", "method": "卷尺"}
+    ],
+    "木工": [
+      {"item": "吊顶水平", "standard": "<3mm/2m", "method": "水平仪"},
+      {"item": "柜体垂直", "standard": "<2mm/2m", "method": "水平仪"},
+      {"item": "柜门缝隙", "standard": "均匀<2mm", "method": "塞尺"},
+      {"item": "抽屉顺滑", "standard": "推拉无异响", "method": "手动测试"},
+      {"item": "板材环保", "standard": "E0级/E1级", "method": "查看检测报告"},
+      {"item": "封边牢固", "standard": "无脱胶起翘", "method": "目测+手摸"},
+      {"item": "五金品牌", "standard": "合同约定品牌", "method": "核对"},
+      {"item": "柜体固定", "standard": "与墙体连接牢固", "method": "手推"}
+    ],
+    "油漆": [
+      {"item": "腻子平整", "standard": "<2mm/2m", "method": "靠尺"},
+      {"item": "阴阳角顺直", "standard": "偏差<2mm", "method": "靠尺"},
+      {"item": "漆面均匀", "standard": "无色差/流坠/起皮", "method": "强光手电"},
+      {"item": "漆膜厚度", "standard": "\u226520\u03bcm", "method": "涂层测厚仪"},
+      {"item": "墙面手感", "standard": "光滑无颗粒", "method": "手摸"},
+      {"item": "分色线平直", "standard": "偏差<2mm", "method": "目测"}
+    ],
+    "竣工验收": [
+      {"item": "全屋开关插座", "standard": "通电正常/相位正确", "method": "相位检测仪"},
+      {"item": "门窗开合", "standard": "灵活无卡顿", "method": "手动测试"},
+      {"item": "门窗密封", "standard": "无透光/漏风", "method": "目测/手感"},
+      {"item": "地面水平", "standard": "<3mm/2m", "method": "水平仪"},
+      {"item": "地漏排水速度", "standard": ">0.5L/s", "method": "量杯+秒表"},
+      {"item": "全屋网络", "standard": "每个房间信号>-65dBm", "method": "WiFi分析仪"},
+      {"item": "新风出风", "standard": "各风口出风均匀", "method": "风速仪"},
+      {"item": "空调制冷", "standard": "各房间温差<2\u2103", "method": "温度计"},
+      {"item": "热水出水", "standard": "开启后<10s出热水", "method": "秒表"},
+      {"item": "甲醛浓度", "standard": "<0.08mg/m\u00b3", "method": "甲醛检测仪"},
+      {"item": "TVOC浓度", "standard": "<0.5mg/m\u00b3", "method": "TVOC检测仪"},
+      {"item": "全屋保洁", "standard": "无建筑垃圾/浮灰", "method": "目测"}
+    ],
+    "材料验收": [
+      {"item": "水电材料", "standard": "品牌/规格/型号与合同一致", "method": "核对送货单"},
+      {"item": "瓷砖", "standard": "同批次/无色差/无破损", "method": "开箱抽查"},
+      {"item": "板材", "standard": "环保等级/厚度与合同一致", "method": "核对检测报告"},
+      {"item": "油漆涂料", "standard": "未开封/保质期内", "method": "核对产品码"},
+      {"item": "五金配件", "standard": "品牌/型号正确", "method": "核对"},
+      {"item": "卫浴洁具", "standard": "无裂纹/釉面完好", "method": "目测+手摸"},
+      {"item": "开关插座", "standard": "3C认证", "method": "查看标识"}
+    ]
+  },
+  "gb_references": {
+    "GB50210": "建筑装饰装修工程质量验收标准",
+    "GB50327": "住宅装饰装修工程施工规范",
+    "GB50300": "建筑工程施工质量验收统一标准",
+    "GB50325": "民用建筑工程室内环境污染控制标准"
+  }
+}
