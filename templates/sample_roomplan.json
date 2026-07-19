@@ -1,0 +1,774 @@
+{
+ "name": "两室一厅样例（RoomPlan原生格式）",
+ "version": "roomplan.sample.v1",
+ "unit": "mm",
+ "surfaces": [
+  {
+   "identifier": "W_N1",
+   "category": "wall",
+   "transform": [
+    1.0,
+    0,
+    0.0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0.0,
+    0,
+    -1.0,
+    0,
+    0,
+    0,
+    0,
+    1
+   ],
+   "dimensions": {
+    "x": 4200.0,
+    "y": 2800,
+    "z": 120
+   }
+  },
+  {
+   "identifier": "W_N2",
+   "category": "wall",
+   "transform": [
+    1.0,
+    0,
+    0.0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0.0,
+    0,
+    -1.0,
+    0,
+    4200,
+    0,
+    0,
+    1
+   ],
+   "dimensions": {
+    "x": 4400.0,
+    "y": 2800,
+    "z": 120
+   }
+  },
+  {
+   "identifier": "W_S1",
+   "category": "wall",
+   "transform": [
+    1.0,
+    0,
+    0.0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0.0,
+    0,
+    -1.0,
+    0,
+    0,
+    0,
+    7600,
+    1
+   ],
+   "dimensions": {
+    "x": 6400.0,
+    "y": 2800,
+    "z": 120
+   }
+  },
+  {
+   "identifier": "W_S2",
+   "category": "wall",
+   "transform": [
+    1.0,
+    0,
+    0.0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0.0,
+    0,
+    -1.0,
+    0,
+    6400,
+    0,
+    7600,
+    1
+   ],
+   "dimensions": {
+    "x": 2200.0,
+    "y": 2800,
+    "z": 120
+   }
+  },
+  {
+   "identifier": "W_W1",
+   "category": "wall",
+   "transform": [
+    0.0,
+    0,
+    1.0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    1.0,
+    0,
+    -0.0,
+    0,
+    0,
+    0,
+    0,
+    1
+   ],
+   "dimensions": {
+    "x": 4200.0,
+    "y": 2800,
+    "z": 120
+   }
+  },
+  {
+   "identifier": "W_W2",
+   "category": "wall",
+   "transform": [
+    0.0,
+    0,
+    1.0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    1.0,
+    0,
+    -0.0,
+    0,
+    0,
+    0,
+    4200,
+    1
+   ],
+   "dimensions": {
+    "x": 3400.0,
+    "y": 2800,
+    "z": 120
+   }
+  },
+  {
+   "identifier": "W_E1",
+   "category": "wall",
+   "transform": [
+    0.0,
+    0,
+    1.0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    1.0,
+    0,
+    -0.0,
+    0,
+    8600,
+    0,
+    0,
+    1
+   ],
+   "dimensions": {
+    "x": 4200.0,
+    "y": 2800,
+    "z": 120
+   }
+  },
+  {
+   "identifier": "W_E2",
+   "category": "wall",
+   "transform": [
+    0.0,
+    0,
+    1.0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    1.0,
+    0,
+    -0.0,
+    0,
+    8600,
+    0,
+    4200,
+    1
+   ],
+   "dimensions": {
+    "x": 1700.0,
+    "y": 2800,
+    "z": 120
+   }
+  },
+  {
+   "identifier": "W_E3",
+   "category": "wall",
+   "transform": [
+    0.0,
+    0,
+    1.0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    1.0,
+    0,
+    -0.0,
+    0,
+    8600,
+    0,
+    5900,
+    1
+   ],
+   "dimensions": {
+    "x": 1700.0,
+    "y": 2800,
+    "z": 120
+   }
+  },
+  {
+   "identifier": "W_I1",
+   "category": "wall",
+   "transform": [
+    0.0,
+    0,
+    1.0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    1.0,
+    0,
+    -0.0,
+    0,
+    4200,
+    0,
+    0,
+    1
+   ],
+   "dimensions": {
+    "x": 4200.0,
+    "y": 2800,
+    "z": 120
+   }
+  },
+  {
+   "identifier": "W_I2",
+   "category": "wall",
+   "transform": [
+    0.0,
+    0,
+    1.0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    1.0,
+    0,
+    -0.0,
+    0,
+    6400,
+    0,
+    4200,
+    1
+   ],
+   "dimensions": {
+    "x": 1700.0,
+    "y": 2800,
+    "z": 120
+   }
+  },
+  {
+   "identifier": "W_I3",
+   "category": "wall",
+   "transform": [
+    0.0,
+    0,
+    1.0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    1.0,
+    0,
+    -0.0,
+    0,
+    6400,
+    0,
+    5900,
+    1
+   ],
+   "dimensions": {
+    "x": 1700.0,
+    "y": 2800,
+    "z": 120
+   }
+  },
+  {
+   "identifier": "W_I4",
+   "category": "wall",
+   "transform": [
+    1.0,
+    0,
+    0.0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0.0,
+    0,
+    -1.0,
+    0,
+    0,
+    0,
+    4200,
+    1
+   ],
+   "dimensions": {
+    "x": 4200.0,
+    "y": 2800,
+    "z": 120
+   }
+  },
+  {
+   "identifier": "W_I5",
+   "category": "wall",
+   "transform": [
+    1.0,
+    0,
+    0.0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0.0,
+    0,
+    -1.0,
+    0,
+    4200,
+    0,
+    4200,
+    1
+   ],
+   "dimensions": {
+    "x": 2200.0,
+    "y": 2800,
+    "z": 120
+   }
+  },
+  {
+   "identifier": "W_I6",
+   "category": "wall",
+   "transform": [
+    1.0,
+    0,
+    0.0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0.0,
+    0,
+    -1.0,
+    0,
+    6400,
+    0,
+    4200,
+    1
+   ],
+   "dimensions": {
+    "x": 2200.0,
+    "y": 2800,
+    "z": 120
+   }
+  },
+  {
+   "identifier": "W_I7",
+   "category": "wall",
+   "transform": [
+    1.0,
+    0,
+    0.0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0.0,
+    0,
+    -1.0,
+    0,
+    6400,
+    0,
+    5900,
+    1
+   ],
+   "dimensions": {
+    "x": 2200.0,
+    "y": 2800,
+    "z": 120
+   }
+  },
+  {
+   "identifier": "D_entry",
+   "category": "door",
+   "parentIdentifier": "W_S1",
+   "transform": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    -1,
+    0,
+    600,
+    0,
+    7600,
+    1
+   ],
+   "dimensions": {
+    "x": 1000,
+    "y": 2100,
+    "z": 100
+   }
+  },
+  {
+   "identifier": "D_master",
+   "category": "door",
+   "parentIdentifier": "W_I5",
+   "transform": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    -1,
+    0,
+    4400,
+    0,
+    4200,
+    1
+   ],
+   "dimensions": {
+    "x": 900,
+    "y": 2100,
+    "z": 100
+   }
+  },
+  {
+   "identifier": "D_bedroom2",
+   "category": "door",
+   "parentIdentifier": "W_I4",
+   "transform": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    -1,
+    0,
+    2900,
+    0,
+    4200,
+    1
+   ],
+   "dimensions": {
+    "x": 900,
+    "y": 2100,
+    "z": 100
+   }
+  },
+  {
+   "identifier": "D_kitchen",
+   "category": "door",
+   "parentIdentifier": "W_I2",
+   "transform": [
+    0,
+    0,
+    1,
+    0,
+    0,
+    1,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    6400,
+    0,
+    4350,
+    1
+   ],
+   "dimensions": {
+    "x": 850,
+    "y": 2100,
+    "z": 100
+   }
+  },
+  {
+   "identifier": "D_bath",
+   "category": "door",
+   "parentIdentifier": "W_I3",
+   "transform": [
+    0,
+    0,
+    1,
+    0,
+    0,
+    1,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    6400,
+    0,
+    6250,
+    1
+   ],
+   "dimensions": {
+    "x": 800,
+    "y": 2100,
+    "z": 100
+   }
+  },
+  {
+   "identifier": "WIN_master",
+   "category": "window",
+   "parentIdentifier": "W_N2",
+   "transform": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    -1,
+    0,
+    5600,
+    900,
+    0,
+    1
+   ],
+   "dimensions": {
+    "x": 1800,
+    "y": 1500,
+    "z": 100
+   }
+  },
+  {
+   "identifier": "WIN_bedroom2",
+   "category": "window",
+   "parentIdentifier": "W_N1",
+   "transform": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    -1,
+    0,
+    1200,
+    900,
+    0,
+    1
+   ],
+   "dimensions": {
+    "x": 1800,
+    "y": 1500,
+    "z": 100
+   }
+  },
+  {
+   "identifier": "WIN_living",
+   "category": "window",
+   "parentIdentifier": "W_S1",
+   "transform": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    -1,
+    0,
+    3400,
+    600,
+    7600,
+    1
+   ],
+   "dimensions": {
+    "x": 2400,
+    "y": 1800,
+    "z": 100
+   }
+  },
+  {
+   "identifier": "WIN_kitchen",
+   "category": "window",
+   "parentIdentifier": "W_E2",
+   "transform": [
+    0,
+    0,
+    1,
+    0,
+    0,
+    1,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    8600,
+    900,
+    4500,
+    1
+   ],
+   "dimensions": {
+    "x": 1000,
+    "y": 1200,
+    "z": 100
+   }
+  },
+  {
+   "identifier": "WIN_bath",
+   "category": "window",
+   "parentIdentifier": "W_E3",
+   "transform": [
+    0,
+    0,
+    1,
+    0,
+    0,
+    1,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    8600,
+    1500,
+    6400,
+    1
+   ],
+   "dimensions": {
+    "x": 600,
+    "y": 900,
+    "z": 100
+   }
+  }
+ ],
+ "rooms": [
+  {
+   "identifier": "room-living",
+   "displayName": "客厅",
+   "surfaces": [
+    "W_W2",
+    "W_S1",
+    "W_I2",
+    "W_I3",
+    "W_I4",
+    "W_I5"
+   ]
+  },
+  {
+   "identifier": "room-master",
+   "displayName": "主卧",
+   "surfaces": [
+    "W_N2",
+    "W_E1",
+    "W_I1",
+    "W_I5",
+    "W_I6"
+   ]
+  },
+  {
+   "identifier": "room-bedroom2",
+   "displayName": "次卧",
+   "surfaces": [
+    "W_N1",
+    "W_W1",
+    "W_I1",
+    "W_I4"
+   ]
+  },
+  {
+   "identifier": "room-kitchen",
+   "displayName": "厨房",
+   "surfaces": [
+    "W_I6",
+    "W_E2",
+    "W_I7",
+    "W_I2"
+   ]
+  },
+  {
+   "identifier": "room-bath",
+   "displayName": "卫生间",
+   "surfaces": [
+    "W_I7",
+    "W_E3",
+    "W_S2",
+    "W_I3"
+   ]
+  }
+ ]
+}

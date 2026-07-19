@@ -1,0 +1,96 @@
+{
+  "_comment": "RoomPlan / LiDAR 语义扫描输入模板。由 iPhone/iPad 的 RoomPlan 或扫描应用导出后整理成本结构，交给 core/scan_importer.py 的 summarize_scan_file() 解析，再进入 M0 空间建档。所有 _ 开头的键是注释，可保留，解析器会忽略。",
+  "_units": "长度=毫米(mm)，面积=平方米(㎡)，置信度=0~1 小数",
+  "_top_level_keys": "rooms(或 spaces)=房间列表; openings(或 doors_windows)=门窗开口列表; objects(或 furniture)=识别到的家具/物体(可选); source_type=扫描来源; confidence=整体置信度; bounds_mm=整体包围盒(可选)",
+
+  "source_type": "apple_roomplan",
+  "confidence": 0.72,
+  "bounds_mm": {"min_x": 0, "min_y": 0, "max_x": 8600, "max_y": 7600},
+
+  "rooms": [
+    {
+      "_comment": "房间字段: name=房间名(必填); width_mm=开间(宽); length_mm=进深(长); area_m2=面积(可不填,由宽×长自动算); ceiling_height_mm=层高; orientation=朝向(可选); adjacent_to=相邻房间(可选); confidence=该房间置信度(可选)",
+      "name": "客厅",
+      "width_mm": 6400,
+      "length_mm": 3400,
+      "area_m2": 21.76,
+      "ceiling_height_mm": 2800,
+      "orientation": "南",
+      "adjacent_to": ["主卧", "次卧", "厨房", "卫生间"],
+      "confidence": 0.78
+    },
+    {
+      "name": "主卧",
+      "width_mm": 4400,
+      "length_mm": 4200,
+      "area_m2": 18.48,
+      "ceiling_height_mm": 2800,
+      "orientation": "北",
+      "adjacent_to": ["客厅", "次卧"],
+      "confidence": 0.78
+    },
+    {
+      "name": "次卧",
+      "width_mm": 4200,
+      "length_mm": 4200,
+      "area_m2": 17.64,
+      "ceiling_height_mm": 2800,
+      "orientation": "北",
+      "adjacent_to": ["客厅", "主卧"],
+      "confidence": 0.74
+    },
+    {
+      "name": "厨房",
+      "width_mm": 2200,
+      "length_mm": 1700,
+      "ceiling_height_mm": 2800,
+      "orientation": "东",
+      "adjacent_to": ["客厅", "卫生间"],
+      "confidence": 0.66
+    },
+    {
+      "name": "卫生间",
+      "width_mm": 2200,
+      "length_mm": 1700,
+      "ceiling_height_mm": 2800,
+      "orientation": "东",
+      "adjacent_to": ["客厅", "厨房"],
+      "confidence": 0.66
+    }
+  ],
+
+  "openings": [
+    {
+      "_comment": "开口字段: type=door/window/opening; room=所在房间; width_mm/height_mm=开口宽和高; orientation=朝向(可选); connects_to=门连通到哪个空间(可选); confidence=置信度(可选)",
+      "type": "door",
+      "room": "客厅",
+      "width_mm": 1000,
+      "height_mm": 2100,
+      "orientation": "南",
+      "connects_to": "玄关/楼道",
+      "confidence": 0.8
+    },
+    {"type": "door", "room": "主卧", "width_mm": 900, "height_mm": 2100, "connects_to": "客厅", "confidence": 0.75},
+    {"type": "door", "room": "次卧", "width_mm": 900, "height_mm": 2100, "connects_to": "客厅", "confidence": 0.75},
+    {"type": "door", "room": "厨房", "width_mm": 850, "height_mm": 2100, "connects_to": "客厅", "confidence": 0.7},
+    {"type": "door", "room": "卫生间", "width_mm": 800, "height_mm": 2100, "connects_to": "客厅", "confidence": 0.7},
+    {"type": "window", "room": "客厅", "width_mm": 2400, "height_mm": 1800, "orientation": "南", "confidence": 0.76},
+    {"type": "window", "room": "主卧", "width_mm": 1800, "height_mm": 1500, "orientation": "北", "confidence": 0.76},
+    {"type": "window", "room": "次卧", "width_mm": 1800, "height_mm": 1500, "orientation": "北", "confidence": 0.72},
+    {"type": "window", "room": "厨房", "width_mm": 1000, "height_mm": 1200, "orientation": "东", "confidence": 0.65},
+    {"type": "window", "room": "卫生间", "width_mm": 600, "height_mm": 900, "orientation": "东", "confidence": 0.6}
+  ],
+
+  "objects": [
+    {
+      "_comment": "objects 为可选项,记录扫描识别到的家具/固定物体,目前只原样透传不做解析",
+      "name": "示例: 沙发",
+      "category": "sofa",
+      "room": "客厅",
+      "width_mm": 2200,
+      "depth_mm": 950,
+      "height_mm": 850,
+      "confidence": 0.5
+    }
+  ]
+}

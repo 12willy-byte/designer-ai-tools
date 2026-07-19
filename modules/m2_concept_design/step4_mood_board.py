@@ -6,6 +6,8 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
+from core.design_schema import normalize_conditions
+
 # 载入之前步骤的成果
 def load_step_output(conditions_path, step_name):
     base_dir = os.path.dirname(os.path.abspath(conditions_path))
@@ -19,7 +21,7 @@ def load_step_output(conditions_path, step_name):
 
 def generate_mood_board(conditions_json_path):
     with open(conditions_json_path, "r", encoding="utf-8") as f:
-        conditions = json.load(f)
+        conditions = normalize_conditions(json.load(f))
 
     style = conditions.get("style", {})
     space = conditions.get("space_data", {})

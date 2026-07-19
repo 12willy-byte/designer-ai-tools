@@ -1,0 +1,29 @@
+{
+  "project": {
+    "name": "两室一厅概念提案样例",
+    "house_type": "两室一厅",
+    "area_m2": 68
+  },
+  "family": {
+    "residents": "3人(夫妻+1孩)",
+    "work_from_home": "偶尔",
+    "storage_need": "较高",
+    "cooking_frequency": "高频中餐"
+  },
+  "style": {
+    "primary_style": "现代简约",
+    "color_tone": "暖白、原木色、低饱和蓝灰",
+    "keywords": "通透 温润 收纳",
+    "floor_material": "木地板",
+    "wall_material": "乳胶漆"
+  },
+  "rooms": [
+    {"name": "客厅", "width_mm": 6400, "height_mm": 3400, "orientation": "南", "requirements": {"功能": "会客、观影、亲子活动", "备注": "希望通透,不要复杂吊顶"}},
+    {"name": "主卧", "width_mm": 4400, "height_mm": 4200, "orientation": "北", "requirements": {"功能": "睡眠、衣物收纳", "备注": "需要整墙衣柜"}},
+    {"name": "次卧", "width_mm": 4200, "height_mm": 4200, "orientation": "北", "requirements": {"功能": "儿童房,兼顾书房"}},
+    {"name": "厨房", "width_mm": 2200, "height_mm": 1700, "orientation": "东", "requirements": {"功能": "高频中餐,需要大单槽和洗碗机位"}},
+    {"name": "卫生间", "width_mm": 2200, "height_mm": 1700, "orientation": "东", "requirements": {"功能": "干湿分离"}}
+  ],
+  "budget": {"total_budget": 280000},
+  "special_requirements": {"环保": "低VOC,儿童房材料需ENF级"}
+}

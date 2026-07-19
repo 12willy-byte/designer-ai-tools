@@ -1,0 +1,97 @@
+{
+  "_说明": "手动房间数据模板 —— 没有 CAD 图纸也没有 LiDAR 扫描时,用卷尺量房后照此填写。填好后整个文件即可作为 design_conditions 喂给 MVP 概念提案流水线。所有 _ 开头的键是注释,可保留可删除。",
+  "_单位": "长度=毫米(mm); 面积=平方米(㎡); 预算=人民币元",
+  "_用法": "AI_DEMO_MODE=1 python3 -m modules.m2_concept_design.mvp_pipeline 本文件.json 输出.pptx",
+
+  "project": {
+    "_注释": "项目基本信息。house_type=户型(如 两室一厅); area_m2=建筑面积或套内面积(㎡); design_type=设计类型(如 concept_design)",
+    "name": "示例: 某某小区 3-2-501",
+    "address": "示例: 杭州市XX区XX路XX小区",
+    "house_type": "两室一厅",
+    "area_m2": 68,
+    "design_type": "concept_design"
+  },
+
+  "space_data": {
+    "_注释": "空间实测数据。rooms 为房间列表; total_area_m2 可不填(自动按房间面积求和); has_beams/has_columns=现场是否有梁/柱",
+    "total_area_m2": 65.36,
+    "has_beams": false,
+    "has_columns": false,
+    "rooms": [
+      {
+        "_注释": "每个房间: name=房间名(必填); width_mm=开间宽度; length_mm=进深长度; area_m2=面积(可不填,自动=宽×长); ceiling_height_mm=层高; orientation=朝向; adjacent_to=相邻房间; requirements=该房间设计需求(自由填写)",
+        "name": "客厅",
+        "width_mm": 6400,
+        "length_mm": 3400,
+        "ceiling_height_mm": 2800,
+        "orientation": "南",
+        "adjacent_to": ["主卧", "次卧", "厨房", "卫生间"],
+        "requirements": {"功能": "会客、观影、亲子活动", "备注": "希望通透,不要复杂吊顶"}
+      },
+      {
+        "name": "主卧",
+        "width_mm": 4400,
+        "length_mm": 4200,
+        "ceiling_height_mm": 2800,
+        "orientation": "北",
+        "adjacent_to": ["客厅"],
+        "requirements": {"功能": "睡眠、衣物收纳", "备注": "需要整墙衣柜"}
+      },
+      {
+        "name": "次卧",
+        "width_mm": 4200,
+        "length_mm": 4200,
+        "ceiling_height_mm": 2800,
+        "orientation": "北",
+        "adjacent_to": ["客厅"],
+        "requirements": {"功能": "儿童房,兼顾书房"}
+      },
+      {
+        "name": "厨房",
+        "width_mm": 2200,
+        "length_mm": 1700,
+        "ceiling_height_mm": 2800,
+        "orientation": "东",
+        "adjacent_to": ["客厅"],
+        "requirements": {"功能": "高频中餐,需要大单槽和洗碗机位"}
+      },
+      {
+        "name": "卫生间",
+        "width_mm": 2200,
+        "length_mm": 1700,
+        "ceiling_height_mm": 2800,
+        "orientation": "东",
+        "adjacent_to": ["客厅"],
+        "requirements": {"功能": "干湿分离"}
+      }
+    ]
+  },
+
+  "family": {
+    "_注释": "家庭情况: residents=常住人口; work_from_home=是否居家办公; storage_need=收纳需求(低/中/较高)",
+    "residents": "3人(夫妻+1孩)",
+    "work_from_home": "偶尔",
+    "storage_need": "较高"
+  },
+
+  "style": {
+    "_注释": "风格偏好: primary_style=主风格; color_tone=色调; keywords=关键词; floor_material/wall_material=偏好材质",
+    "primary_style": "现代简约",
+    "color_tone": "暖白、原木色、低饱和蓝灰",
+    "keywords": "通透 温润 收纳",
+    "floor_material": "木地板",
+    "wall_material": "乳胶漆"
+  },
+
+  "budget": {
+    "_注释": "预算(元)。total_budget=总预算",
+    "total_budget": 280000
+  },
+
+  "special_requirements": {
+    "_注释": "特殊要求与已确认的现场约束。键名含 承重/梁/柱/结构 的条目会被识别为结构约束; 键名含 水/电/燃气/烟道/管井 的条目会被识别为机电约束。这两项决定了自动化闸门是否放行布局草案——未确认时系统会安全地拦截布局而不是伪造方案。",
+    "环保": "低VOC,儿童房材料需ENF级",
+    "承重结构": "示例(确认后填写): 全屋仅外墙和卫生间隔墙为承重墙,室内轻体墙可拆改",
+    "水电": "示例(确认后填写): 厨房烟道在东南角,卫生间下水在东墙,强弱电箱在入户门侧"
+  }
+}

@@ -26,11 +26,12 @@
 │   ├── parse_survey.py            # [旧] 问卷解析
 │   └── m2_concept_design/         # 概念方案（色板/材质/PPT）
 │
-├── templates/                     # 模板与样本数据
-│   ├── 设计需求问卷模板.xlsx
-│   └── *.json
+├── templates/                     # 输入模板与样例数据（详见 templates/README.md）
+│   ├── sample_roomplan.json       # RoomPlan 原生格式样例（main.py sample 用）
+│   ├── roomplan_scan.template.json # LiDAR/语义扫描输入模板（scan_importer 用）
+│   ├── manual_space_data.template.json # 手动量房数据模板（含中文填写说明）
+│   └── design_conditions.sample.json   # 设计条件样例（mvp_pipeline 用）
 │
-├── docs/                          # 文档（待补充）
 ├── .env.example                   # 环境变量模板
 ├── .gitignore
 └── README.md
@@ -67,6 +68,15 @@ from core.cad_reader import read_dxf_floor_plan
 plan = read_dxf_floor_plan("原始结构图.dxf")
 print(f"发现 {plan['total_lines']} 条可识别线段")
 ```
+
+### 5. 跑通概念提案流水线（离线演示）
+
+```bash
+AI_DEMO_MODE=1 python3 -m modules.m2_concept_design.mvp_pipeline \
+    templates/design_conditions.sample.json 概念方案.pptx
+```
+
+输入模板（手动量房 / LiDAR 扫描 / RoomPlan 样例）见 `templates/README.md`。
 
 ## AI 功能
 

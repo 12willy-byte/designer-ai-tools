@@ -44,8 +44,25 @@ def _normalize_room_requirements(conditions, rooms):
 def _normalize_space_data(conditions, rooms):
     space = dict(conditions.get("space_data") or {})
     if space.get("rooms"):
-        space["total_rooms"] = space.get("total_rooms") or len(space["rooms"])
-        space["total_area_m2"] = space.get("total_area_m2") or sum(r.get("area_m2", 0) for r in space["rooms"])
+        # 用户直接提供 space_data.rooms 时,补齐下游步骤依赖的 width_mm/height_mm/area_m2
+        # (height_mm 在此约定为房间进深,与下方 derived_rooms 分支一致)
+        normalized_space_rooms = []
+        for room in space["rooms"]:
+            if not isinstance(room, dict):
+                continue
+            entry = dict(room)
+            width = _num(entry.get("width_mm") or entry.get("width") or entry.get("w"))
+            height = _num(entry.get("height_mm") or entry.get("length_mm") or entry.get("length") or entry.get("depth_mm") or entry.get("h"))
+            area = _num(entry.get("area_m2") or entry.get("area"))
+            if not area and width and height:
+                area = width * height / 1_000_000
+            entry["width_mm"] = int(width or 0)
+            entry["height_mm"] = int(height or 0)
+            entry["area_m2"] = round(area or 0, 2)
+            normalized_space_rooms.append(entry)
+        space["rooms"] = normalized_space_rooms
+        space["total_rooms"] = space.get("total_rooms") or len(normalized_space_rooms)
+        space["total_area_m2"] = space.get("total_area_m2") or round(sum(r["area_m2"] for r in normalized_space_rooms), 2)
         return space
 
     derived_rooms = []
