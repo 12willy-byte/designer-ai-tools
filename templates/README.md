@@ -39,6 +39,9 @@
   ```
 
 - 接入 M0：`run_mvp_concept_package(conditions_path, scan_summary=summary)`。
+- M4 布局草案消费字段：`rooms` 的 `width_mm`/`length_mm`/`adjacent_to` 决定家具尺寸上限与动线；
+  `openings` 的 `room`/`width_mm`/`orientation`/`connects_to` 决定门窗避让规则（高柜避让门扇开启范围、
+  窗前固定家具限高）。`orientation` 缺失时开口会挂到最长墙并生成现场确认点位，建议尽量填写。
 
 ## 3. manual_space_data.template.json（手动量房模板）
 

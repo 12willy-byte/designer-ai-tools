@@ -33,6 +33,20 @@ SYSTEM_PROMPT = """你是中国顶尖的室内设计布局规划专家。根据�
 3. 输入未直接给出的信息（家庭成员年龄推断、未确认的现场条件等）如需引用，以"假设："开头标注，不得与事实混排。"""
 
 
+def generate_layout_draft(space_profile, needs_profile, gate=None, output_dir=None) -> dict:
+    """M4 布局草案入口：闸门放行后由流水线调用。
+
+    委托 core.layout_draft 的规则引擎（几何决策全部来自空间事实），
+    并在 output_dir 下写 layout_draft.json / layout_draft_summary.md。
+    闸门拦截或事实不足时返回带 status/reasons 的 blocked 字典，不伪造布局。
+    """
+    from core.layout_draft import build_layout_draft_package
+    package = build_layout_draft_package(
+        space_profile, needs_profile, gate=gate, output_dir=output_dir,
+    )
+    return package["draft"]
+
+
 def generate_layout(conditions_json_path: str, dxf_input_path: str = None, dxf_output_path: str = None) -> dict:
     with open(conditions_json_path, "r", encoding="utf-8") as f:
         conditions = normalize_conditions(json.load(f))

@@ -13,7 +13,7 @@ from modules.m2_concept_design.step1_design_brief import generate_design_brief
 from modules.m2_concept_design.step2_color_palette import generate_color_palette
 from modules.m2_concept_design.step3_material_board import generate_material_board
 from modules.m2_concept_design.step4_mood_board import generate_mood_board
-from modules.m2_concept_design.step5_layout_sketch import generate_layout
+from modules.m2_concept_design.step5_layout_sketch import generate_layout_draft
 from modules.m2_concept_design.step7_build_pptx import build_pptx
 from core.space_profile import build_space_cognition_package
 from core.needs_profile import build_needs_cognition_package
@@ -72,7 +72,12 @@ def run_mvp_concept_package(
     materials = generate_material_board(conditions_json_path)
     mood_board_path = generate_mood_board(conditions_json_path)
     if "layout_draft" in gate["allowed"]:
-        layout = generate_layout(conditions_json_path)
+        layout = generate_layout_draft(
+            space_package["profile"],
+            needs_package["profile"],
+            gate=gate,
+            output_dir=out_dir,
+        )
     else:
         layout = {
             "status": "blocked_by_automation_gate",
@@ -94,6 +99,8 @@ def run_mvp_concept_package(
         "material_image": materials.get("board_image"),
         "mood_board": mood_board_path,
         "layout_json": os.path.join(out_dir, "布局方案.json"),
+        "layout_draft_json": (layout.get("artifacts") or {}).get("layout_draft"),
+        "layout_draft_summary": (layout.get("artifacts") or {}).get("layout_summary_md"),
         "space_profile": space_package["space_profile"],
         "cad_plan": space_package["cad_plan"],
         "scan_summary": space_package["scan_summary"],

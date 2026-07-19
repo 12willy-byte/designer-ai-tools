@@ -15,6 +15,7 @@
 │   ├── space_profile.py           # 空间对象档案 / 自动化流程基础
 │   ├── needs_profile.py           # 业主需求画像
 │   ├── automation_gate.py         # 约束判断 / 自动化闸门
+│   ├── layout_draft.py            # M4 布局草案（规则引擎 + AI 文字增强）
 │   ├── ai_client.py               # 统一 LLM 客户端
 │   ├── cad_reader.py              # DXF 图纸读取
 │   ├── survey_parser.py           # Excel 问卷 -> 设计条件
@@ -93,7 +94,8 @@ AI_DEMO_MODE=1 python3 -m modules.m2_concept_design.mvp_pipeline \
 | 色彩方案建议 | modules/m2_concept_design/step2 | ✅ |
 | 材质方案 | modules/m2_concept_design/step3 | ✅ |
 | 风格意向板 | modules/m2_concept_design/step4 | ✅ |
-| 布局建议 | modules/m2_concept_design/step5 | ✅ |
+| 布局建议（旧，AI 直出） | modules/m2_concept_design/step5 | ✅ |
+| 布局草案（M4，闸门放行后生成） | core/layout_draft.py + step5 | ✅ |
 | 概念PPT打包 | modules/m2_concept_design/step7 | ✅ |
 
 ## 环境变量
@@ -120,7 +122,8 @@ python3 scripts/compare_models.py --providers deepseek,openai
 1. M0 空间对象认知：导入 LiDAR/扫描、CAD 或手动房间数据，输出 `space_profile.json`、`cad_plan.json`、`scan_summary.json`、`space_observations.json`、`questions_to_confirm.json`。
 2. M1 业主需求认知：解析家庭、生活方式、风格、预算和各空间需求，输出 `needs_profile.json`、`needs_observations.json`、`needs_questions_to_confirm.json`。
 3. M2 约束判断：基于 M0/M1 输出 `automation_gate.json`、`constraint_report.json`、`unified_questions_to_confirm.json`，判断能否进入概念、布局、预算等后续自动化。
-4. M3+ 概念方案、布局草案、材料预算和交付打包。
+4. M4 布局草案：闸门放行 `layout_draft` 后，由 `core/layout_draft.py` 基于空间事实（房间尺寸、门窗位置与宽度、相邻关系）和 M1 需求档案生成逐房间的布局草案——功能分区、家具布置（名称+尺寸+靠墙关系）、动线与现场确认点位，输出 `layout_draft.json` 和 `layout_draft_summary.md`，PPT 布局页同步展示草案或拦截原因。几何决策全部由规则引擎完成（家具尺寸按房间净尺寸校验、高柜避让门扇开启范围、窗前固定家具限高），真实模式下 AI 只做文字增强，不能新增房间或修改尺寸；推断统一进 `assumptions` 并以「假设：」前缀。
+5. M3+ 概念方案、材料预算和交付打包。
 
 当前流水线会先经过 M2。如果空间和需求足够，会继续生成概念提案；如果资料不足以自动布局，会生成带原因的 `布局方案.json` 拦截结果，而不是伪造布局草案。
 

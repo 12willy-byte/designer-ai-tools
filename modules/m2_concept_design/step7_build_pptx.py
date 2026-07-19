@@ -196,25 +196,71 @@ def build_pptx(conditions_json_path, output_path):
     add_textbox(slide, Inches(0.8), Inches(0.4), Inches(4), Inches(0.6),
                "06  布局方案", font_size=28, color=COLORS["dark"], bold=True)
 
-    # 布局方案的文字摘要
-    layout_path = os.path.join(out_dir, "布局方案.dxf")
-    if os.path.exists(layout_path):
-        # 读取 DXf 中的文字建议作为布局说明
-        import ezdxf
-        doc = ezdxf.readfile(layout_path)
-        texts = []
-        for e in doc.modelspace():
-            if e.dxftype() == "TEXT" and e.dxf.layer.startswith("AI方案"):
-                texts.append(e.dxf.text)
+    # 布局方案的文字摘要（优先读 M4 布局草案 JSON；无 JSON 时回退旧的 DXF 文字）
+    layout_json_path = os.path.join(out_dir, "布局方案.json")
+    layout_data = None
+    if os.path.exists(layout_json_path):
+        try:
+            layout_data = json.load(open(layout_json_path, "r", encoding="utf-8"))
+        except Exception:
+            layout_data = None
 
-        if texts:
-            y = Inches(1.5)
-            for t in texts[:15]:
-                add_textbox(slide, Inches(1), y, Inches(11), Inches(0.4),
-                           t, font_size=14, color=COLORS["gray"])
+    if layout_data and layout_data.get("status") == "draft" and layout_data.get("rooms"):
+        rooms = layout_data["rooms"]
+        add_textbox(slide, Inches(0.8), Inches(1.1), Inches(11.5), Inches(0.5),
+                   "布局草案（M4）覆盖 %d 个空间，供讨论复核，非施工依据" % len(rooms),
+                   font_size=15, color=COLORS["gray"])
+        y = Inches(1.7)
+        for rm in rooms:
+            zones = "、".join(z.get("name", "") for z in rm.get("zones") or [])
+            add_textbox(slide, Inches(0.9), y, Inches(11.5), Inches(0.4),
+                       "%s：%s" % (rm.get("name", ""), zones or "功能分区待确认"),
+                       font_size=15, color=COLORS["dark"], bold=True)
+            y += Inches(0.42)
+            furniture = rm.get("furniture") or []
+            if furniture:
+                items = "；".join(
+                    "%s %dx%dmm" % (f.get("item", ""), f.get("width_mm", 0), f.get("depth_mm", 0))
+                    for f in furniture[:4])
+                add_textbox(slide, Inches(1.2), y, Inches(11), Inches(0.4),
+                           items, font_size=13, color=COLORS["gray"])
+                y += Inches(0.4)
+            confirms = rm.get("confirm_points") or []
+            if confirms:
+                add_textbox(slide, Inches(1.2), y, Inches(11), Inches(0.4),
+                           "现场确认：%s" % confirms[0], font_size=12, color=COLORS["accent"])
                 y += Inches(0.38)
-                if y > Inches(6.5):
-                    break
+            if y > Inches(6.6):
+                break
+    elif layout_data and layout_data.get("status", "").startswith("blocked"):
+        reasons = layout_data.get("reasons") or []
+        add_textbox(slide, Inches(0.8), Inches(1.4), Inches(11.5), Inches(0.6),
+                   "布局草案未生成：空间事实不足，自动化闸门已安全拦截（未伪造布局）。",
+                   font_size=16, color=COLORS["dark"], bold=True)
+        y = Inches(2.2)
+        for reason in reasons[:6]:
+            add_textbox(slide, Inches(1), y, Inches(11), Inches(0.45),
+                       "· " + reason, font_size=14, color=COLORS["gray"])
+            y += Inches(0.45)
+    else:
+        layout_path = os.path.join(out_dir, "布局方案.dxf")
+        if os.path.exists(layout_path):
+            # 读取 DXf 中的文字建议作为布局说明
+            import ezdxf
+            doc = ezdxf.readfile(layout_path)
+            texts = []
+            for e in doc.modelspace():
+                if e.dxftype() == "TEXT" and e.dxf.layer.startswith("AI方案"):
+                    texts.append(e.dxf.text)
+
+            if texts:
+                y = Inches(1.5)
+                for t in texts[:15]:
+                    add_textbox(slide, Inches(1), y, Inches(11), Inches(0.4),
+                               t, font_size=14, color=COLORS["gray"])
+                    y += Inches(0.38)
+                    if y > Inches(6.5):
+                        break
 
     # ── Slide 8~: 氛围图 ──
     # 找到所有氛围图
@@ -261,7 +307,14 @@ def build_pptx(conditions_json_path, output_path):
         except Exception:
             pass
 
-    # 3) 面积口径说明（建筑面积 vs 房间加总）
+    # 3) 布局草案 JSON 的 assumptions 数组（M4）
+    if layout_data and layout_data.get("status") == "draft":
+        for item in layout_data.get("assumptions") or []:
+            text = str(item).strip()
+            if text and text not in assumption_items:
+                assumption_items.append(text)
+
+    # 4) 面积口径说明（建筑面积 vs 房间加总）
     caliber_notes = []
     building_area = project.get("area_m2") or project.get("area")
     room_total = space.get("total_area_m2")
