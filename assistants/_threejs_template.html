@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>__TITLE__ - 3D Preview</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{overflow:hidden;background:#1a1a2e;font-family:"Microsoft YaHei",sans-serif;}
+  canvas{display:block;}
+  #info{position:fixed;top:12px;left:16px;color:#fff;background:rgba(0,0,0,.65);padding:8px 16px;border-radius:8px;font-size:13px;z-index:10;pointer-events:none;backdrop-filter:blur(8px);}
+  #info b{color:#ffd700;}
+  #legend{position:fixed;bottom:16px;right:16px;color:#ccc;background:rgba(0,0,0,.55);padding:10px 14px;border-radius:8px;font-size:11px;z-index:10;pointer-events:none;backdrop-filter:blur(8px);}
+  #legend span{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:middle;}
+
+  #capture-btn{position:fixed;bottom:16px;left:16px;background:#ffd700;color:#1a1a2e;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:bold;z-index:10;transition:all .2s;}
+  #capture-btn:hover{background:#ffed4a;transform:scale(1.05);}
+  #capture-btn:active{transform:scale(0.95);}
+  #capture-msg{position:fixed;bottom:56px;left:16px;color:#0f0;font-size:12px;z-index:10;opacity:0;transition:opacity .3s;}
+</style>
+</head>
+<body>
+<div id="info"><b>__TITLE__</b> | __SUMMARY__ | __STATS__</div>
+<div id="legend">
+  <span style="background:#8B7355"></span>Wall
+  <span style="background:#F5DEB3"></span>Floor
+  <span style="background:#87CEEB"></span>Ceiling
+  <span style="background:#E8D5B7"></span>Furniture<br>
+  Drag to rotate | Scroll to zoom | Right-drag to pan
+</div>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from "three";
+import {OrbitControls} from "three/addons/controls/OrbitControls.js";
+
+const DATA = __DATA__;
+const container = document.body;
+
+// Renderer
+const renderer = new THREE.WebGLRenderer({antialias: true, alpha: false});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+container.appendChild(renderer.domElement);
+
+// Scene
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x1a1a2e);
+scene.fog = new THREE.Fog(0x1a1a2e, 15, 60);
+
+// Camera
+const camera = new THREE.PerspectiveCamera(55, window.innerWidth/window.innerHeight, 0.5, 100);
+camera.position.set(8, 8, 12);
+camera.lookAt(3, 0, 3);
+
+// Controls
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(3, 1.5, 3);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 2;
+controls.maxDistance = 30;
+controls.maxPolarAngle = Math.PI * 0.55;
+controls.update();
+
+// Lighting
+const ambient = new THREE.AmbientLight(0x404060, 1.5);
+scene.add(ambient);
+
+const sun = new THREE.DirectionalLight(0xffeedd, 4);
+sun.position.set(10, 15, 8);
+sun.castShadow = true;
+sun.shadow.mapSize.width = 2048;
+sun.shadow.mapSize.height = 2048;
+sun.shadow.camera.near = 0.5;
+sun.shadow.camera.far = 60;
+sun.shadow.camera.left = -15;
+sun.shadow.camera.right = 15;
+sun.shadow.camera.top = 15;
+sun.shadow.camera.bottom = -15;
+sun.shadow.bias = -0.0005;
+scene.add(sun);
+
+const fill = new THREE.DirectionalLight(0xaaccff, 1.5);
+fill.position.set(-5, 3, -3);
+scene.add(fill);
+
+const rim = new THREE.DirectionalLight(0xffffff, 0.8);
+rim.position.set(0, 2, -5);
+scene.add(rim);
+
+// Materials
+const wallMat = new THREE.MeshStandardMaterial({color: 0xE8E0D8, roughness: 0.7, metalness: 0.05});
+const floorMat = new THREE.MeshStandardMaterial({color: 0xC4A484, roughness: 0.6, metalness: 0.05});
+const ceilingMat = new THREE.MeshStandardMaterial({color: 0xFFFFFF, roughness: 0.95, metalness: 0});
+const furnitureColors = {
+  sofa: 0xB0A090, bed: 0xC4A484, table: 0x8B7355, cabinet: 0xA08060,
+  chair: 0x909090, sanitary: 0xF8F8F8, appliance: 0xC0C0C0, general: 0xD4C4A8
+};
+
+// Ground plane
+const groundGeo = new THREE.PlaneGeometry(30, 30);
+const ground = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({color: 0x333344, roughness: 0.9}));
+ground.rotation.x = -Math.PI/2;
+ground.position.y = -2.8;
+ground.receiveShadow = true;
+ground.name = "ground";
+scene.add(ground);
+
+// Grid
+const grid = new THREE.GridHelper(20, 20, 0x444466, 0x222244);
+grid.position.y = -2.79;
+scene.add(grid);
+
+// Build scene from data
+const scale = 0.001; // mm -> m
+
+// Calculate bounds
+let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+
+// Walls
+const wallsGroup = new THREE.Group();
+wallsGroup.name = "walls";
+for (const w of DATA.walls || []) {
+  const sx = w.sx * scale, sz = w.sz * scale;
+  const ex = w.ex * scale, ez = w.ez * scale;
+  const h = (w.h || 2.8) * scale;
+  const t = (w.thick || 0.12) * scale;
+  
+  const dx = ex - sx, dz = ez - sz;
+  const length = Math.sqrt(dx*dx + dz*dz);
+  const midX = (sx+ex)/2, midZ = (sz+ez)/2;
+  const angle = Math.atan2(dz, dx);
+  
+  const geo = new THREE.BoxGeometry(length, h, t);
+  const mesh = new THREE.Mesh(geo, wallMat);
+  mesh.position.set(midX, h/2 - 2.8, midZ);
+  mesh.rotation.y = -angle;
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mesh.name = "wall";
+  wallsGroup.add(mesh);
+  
+  minX = Math.min(minX, sx, ex);
+  maxX = Math.max(maxX, sx, ex);
+  minZ = Math.min(minZ, sz, ez);
+  maxZ = Math.max(maxZ, sz, ez);
+  
+  // Door openings as darker boxes
+  for (const op of w.openings || []) {
+    if (op.type === "door") {
+      const off = op.off * scale;
+      const ow = (op.w || 0.9) * scale;
+      const oh = (op.h || 2.1) * scale;
+      const ox = sx + dx * off / length + dx * ow / length / 2;
+      const oz = sz + dz * off / length + dz * ow / length / 2;
+      const doorGeo = new THREE.BoxGeometry(ow, oh, t*1.1);
+      const doorMesh = new THREE.Mesh(doorGeo, new THREE.MeshStandardMaterial({color: 0x8B7355, roughness: 0.5}));
+      doorMesh.position.set(ox, oh/2 - 2.8, oz);
+      doorMesh.rotation.y = -angle;
+      doorMesh.name = "door";
+      wallsGroup.add(doorMesh);
+    }
+  }
+}
+scene.add(wallsGroup);
+
+// Floor (per room)
+if (DATA.rooms) {
+  for (const r of DATA.rooms) {
+    if (!r.floor || r.floor.length < 3) continue;
+    const shape = new THREE.Shape();
+    const pts = r.floor;
+    for (let i = 0; i < pts.length; i++) {
+      const x = pts[i].x * scale - (minX+maxX)/2;
+      const z = pts[i].z * scale - (minZ+maxZ)/2;
+      if (i === 0) shape.moveTo(x, z);
+      else shape.lineTo(x, z);
+    }
+    shape.closePath();
+    const geo = new THREE.ShapeGeometry(shape);
+    const mesh = new THREE.Mesh(geo, floorMat);
+    mesh.rotation.x = -Math.PI/2;
+    mesh.position.y = -2.79;
+    mesh.receiveShadow = true;
+    mesh.name = "floor_" + (r.name || "room");
+    scene.add(mesh);
+  }
+}
+
+// Furniture
+if (DATA.furniture) {
+  for (const f of DATA.furniture) {
+    const px = (f.px || f.x || 0) * scale;
+    const pz = (f.pz || f.z || 0) * scale;
+    const fw = (f.w || 0.5) * scale;
+    const fd = (f.d || 0.5) * scale;
+    const fh = (f.h || 0.75) * scale;
+    const name = f.name || "";
+    
+    let color = furnitureColors.general;
+    for (const [key, val] of Object.entries(furnitureColors)) {
+      if (name.includes(key)) { color = val; break; }
+    }
+    
+    const geo = new THREE.BoxGeometry(fw, fh, fd);
+    const mat = new THREE.MeshStandardMaterial({color, roughness: 0.55, metalness: 0.1});
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(px - (minX+maxX)/2, fh/2 - 2.8, pz - (minZ+maxZ)/2);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    mesh.name = "furniture_" + name;
+    scene.add(mesh);
+  }
+}
+
+// Center camera on content
+const cx = (minX+maxX)/2, cz = (minZ+maxZ)/2;
+const span = Math.max(maxX-minX, maxZ-minZ, 4);
+controls.target.set(0, -1.4, 0);
+camera.position.set(span*0.8, span*0.6, span*0.9);
+camera.lookAt(0, -1.4, 0);
+controls.update();
+
+// Handle resize
+window.addEventListener("resize", () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// Render loop
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
+</script>
+
+<button id="capture-btn" onclick="captureScreenshot()">📷 截图下载</button>
+<div id="capture-msg"></div>
+<script>
+function captureScreenshot() {
+  const msg = document.getElementById("capture-msg");
+  msg.style.opacity = "1";
+  msg.textContent = "正在生成...";
+  renderer.render(scene, camera);
+  renderer.domElement.toBlob(function(blob) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "__TITLE___screenshot.png";
+    a.click();
+    URL.revokeObjectURL(url);
+    msg.textContent = "✅ 已下载!";
+    setTimeout(() => { msg.style.opacity = "0"; }, 2000);
+  }, "image/png");
+}
+</script>
+</body>
+</html>

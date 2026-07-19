@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Excel temp
+~$*.xlsx
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+.DS_Store
+
+# API Keys
+config.py
+.env
+
+# Generated output
+**/concept_output/
+**/real_output/
+output/
+
+# Node
+node_modules/
+
+# Temp/dev scripts
+_*.py

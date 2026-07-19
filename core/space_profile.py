@@ -1,0 +1,451 @@
+"""Space-object profile helpers for the automated design pipeline.
+
+The profile is the stable handoff between raw inputs (survey, CAD, scan,
+manual room data) and downstream design automation modules.
+"""
+import json
+import os
+
+from core.design_schema import normalize_conditions
+
+
+SCHEMA_VERSION = "space_profile.v1"
+
+
+def build_space_profile(conditions, cad_plan=None, scan_summary=None, source_files=None):
+    """Build a verifiable profile of the space being designed."""
+    normalized = normalize_conditions(conditions or {})
+    space_data = normalized.get("space_data") or {}
+    project = normalized.get("project") or {}
+    rooms = _normalize_profile_rooms(space_data.get("rooms") or normalized.get("rooms") or [])
+    if scan_summary and scan_summary.get("rooms"):
+        rooms = _merge_rooms(rooms, _normalize_profile_rooms(scan_summary.get("rooms") or []))
+
+    evidence = [{"type": "design_conditions", "confidence": 0.65}]
+    geometry = {
+        "source_type": "manual",
+        "confidence": 0.45,
+        "bounds_mm": None,
+        "rooms": rooms,
+        "doors": [],
+        "windows": [],
+        "notes": [],
+    }
+
+    if cad_plan:
+        geometry = _merge_cad_geometry(geometry, cad_plan)
+        evidence.append({"type": "cad_dxf", "confidence": 0.6, "source": cad_plan.get("source", "")})
+
+    if scan_summary:
+        geometry = _merge_scan_geometry(geometry, scan_summary, bool(cad_plan))
+        evidence.append({
+            "type": "scan",
+            "confidence": _num(scan_summary.get("confidence")) or 0.55,
+            "source": scan_summary.get("source", ""),
+        })
+
+    constraints = _collect_constraints(normalized)
+    profile = {
+        "schema_version": SCHEMA_VERSION,
+        "project": {
+            "name": project.get("name", ""),
+            "address": project.get("address", ""),
+            "house_type": project.get("house_type", ""),
+            "area_m2": _num(project.get("area_m2") or space_data.get("total_area_m2")),
+            "design_type": project.get("design_type", ""),
+        },
+        "design_object": {
+            "category": "interior_space",
+            "scope": project.get("design_type") or "concept_design",
+            "description": _describe_object(project, rooms),
+        },
+        "geometry": geometry,
+        "constraints": constraints,
+        "evidence": evidence,
+        "source_files": source_files or {},
+    }
+    profile["readiness"] = evaluate_space_profile(profile)
+    profile["observations"] = build_space_observations(profile)
+    profile["questions_to_confirm"] = build_space_questions(profile)
+    return profile
+
+
+def build_space_profile_from_file(conditions_json_path, cad_plan=None, scan_summary=None, output_path=None):
+    with open(conditions_json_path, "r", encoding="utf-8") as f:
+        conditions = json.load(f)
+    profile = build_space_profile(conditions, cad_plan=cad_plan, scan_summary=scan_summary)
+    if output_path:
+        save_space_profile(profile, output_path)
+    return profile
+
+
+def save_space_profile(profile, output_path):
+    os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(profile, f, ensure_ascii=False, indent=2)
+    return output_path
+
+
+def build_space_cognition_package(conditions, output_dir, cad_plan=None, scan_summary=None, source_files=None):
+    """Write the M0 space-cognition artifacts and return their paths."""
+    os.makedirs(output_dir, exist_ok=True)
+    profile = build_space_profile(
+        conditions,
+        cad_plan=cad_plan,
+        scan_summary=scan_summary,
+        source_files=source_files,
+    )
+    profile_path = save_space_profile(profile, os.path.join(output_dir, "space_profile.json"))
+
+    cad_plan_path = None
+    if cad_plan:
+        cad_plan_path = os.path.join(output_dir, "cad_plan.json")
+        with open(cad_plan_path, "w", encoding="utf-8") as f:
+            json.dump(cad_plan, f, ensure_ascii=False, indent=2)
+
+    scan_summary_path = None
+    if scan_summary:
+        scan_summary_path = os.path.join(output_dir, "scan_summary.json")
+        with open(scan_summary_path, "w", encoding="utf-8") as f:
+            json.dump(scan_summary, f, ensure_ascii=False, indent=2)
+
+    observations_path = os.path.join(output_dir, "space_observations.json")
+    with open(observations_path, "w", encoding="utf-8") as f:
+        json.dump(profile["observations"], f, ensure_ascii=False, indent=2)
+
+    questions_path = os.path.join(output_dir, "questions_to_confirm.json")
+    with open(questions_path, "w", encoding="utf-8") as f:
+        json.dump(profile["questions_to_confirm"], f, ensure_ascii=False, indent=2)
+
+    return {
+        "space_profile": profile_path,
+        "cad_plan": cad_plan_path,
+        "scan_summary": scan_summary_path,
+        "space_observations": observations_path,
+        "questions_to_confirm": questions_path,
+        "profile": profile,
+    }
+
+
+def evaluate_space_profile(profile):
+    """Return readiness gates for downstream automation."""
+    project = profile.get("project") or {}
+    geometry = profile.get("geometry") or {}
+    rooms = geometry.get("rooms") or []
+    blocking = []
+    warnings = []
+    unknowns = []
+
+    if not project.get("house_type") and not project.get("design_type"):
+        unknowns.append("缺少空间类型或设计类型")
+    if not rooms:
+        blocking.append("缺少房间/空间列表")
+    if not any(_num(room.get("area_m2")) or (_num(room.get("width_mm")) and _num(room.get("length_mm"))) for room in rooms):
+        blocking.append("缺少可计算面积或长宽尺寸")
+    if not project.get("area_m2") and not sum(_num(room.get("area_m2")) for room in rooms):
+        warnings.append("缺少总面积，后续预算和材料估算不可靠")
+    if not geometry.get("doors"):
+        unknowns.append("门洞位置未知，动线判断只能做概念级建议")
+    if not geometry.get("windows"):
+        unknowns.append("窗户/采光面未知，采光和色彩建议需要人工复核")
+
+    confidence = _num(geometry.get("confidence"))
+    if confidence < 0.5:
+        warnings.append("空间几何置信度较低，建议人工确认后再进入自动布局")
+
+    score = 100
+    score -= len(blocking) * 30
+    score -= len(warnings) * 12
+    score -= len(unknowns) * 6
+    score = max(0, min(100, score))
+
+    ready_for = []
+    if not blocking:
+        ready_for.append("concept_package")
+    if not blocking and confidence >= 0.6 and geometry.get("doors"):
+        ready_for.append("layout_draft")
+    if not blocking and project.get("area_m2"):
+        ready_for.append("budget_estimate")
+
+    return {
+        "score": score,
+        "ready_for": ready_for,
+        "blocking_issues": blocking,
+        "warnings": warnings,
+        "unknowns": unknowns,
+    }
+
+
+def build_space_observations(profile):
+    """Create design-facing observations from the space profile."""
+    geometry = profile.get("geometry") or {}
+    rooms = geometry.get("rooms") or []
+    observations = []
+    risks = []
+
+    for room in rooms:
+        name = room.get("name", "未命名空间")
+        area = _num(room.get("area_m2"))
+        orientation = room.get("orientation") or ""
+        adjacent = room.get("adjacent_to") or []
+        if area:
+            observations.append({
+                "scope": name,
+                "type": "area",
+                "text": f"{name}面积约 {round(area, 2)}㎡，可作为后续布局和预算估算依据。",
+                "confidence": geometry.get("confidence", 0.45),
+            })
+        if orientation:
+            observations.append({
+                "scope": name,
+                "type": "orientation",
+                "text": f"{name}朝向为{orientation}，色彩和采光策略需要优先考虑该朝向。",
+                "confidence": geometry.get("confidence", 0.45),
+            })
+        if adjacent:
+            observations.append({
+                "scope": name,
+                "type": "adjacency",
+                "text": f"{name}连接{', '.join(adjacent)}，可用于判断动线和功能关系。",
+                "confidence": geometry.get("confidence", 0.45),
+            })
+
+    if not geometry.get("doors"):
+        risks.append("门洞位置未知，自动布局阶段不能可靠判断动线入口。")
+    if not geometry.get("windows"):
+        risks.append("窗户位置未知，采光、通风和视觉焦点需要人工确认。")
+    if not (profile.get("constraints") or {}).get("structural"):
+        risks.append("承重墙/梁柱信息未确认，不允许自动给出拆改结论。")
+    if geometry.get("source_type") in ("scan", "mixed"):
+        risks.append("LiDAR/扫描数据反映现场现状，但不能单独证明承重、水电、烟道和物业限制。")
+
+    return {
+        "summary": _summarize_profile(profile),
+        "observations": observations,
+        "risks": risks,
+    }
+
+
+def build_space_questions(profile):
+    """Turn unknowns and risks into a confirmation checklist."""
+    readiness = profile.get("readiness") or {}
+    constraints = profile.get("constraints") or {}
+    questions = []
+
+    for issue in readiness.get("blocking_issues", []):
+        questions.append({
+            "category": "blocking",
+            "question": issue,
+            "reason": "该信息缺失会阻断后续自动设计。",
+            "required": True,
+        })
+    for unknown in readiness.get("unknowns", []):
+        questions.append({
+            "category": "space_unknown",
+            "question": unknown,
+            "reason": "该信息会影响空间判断准确性。",
+            "required": False,
+        })
+    if not constraints.get("structural"):
+        questions.append({
+            "category": "structure",
+            "question": "请确认承重墙、梁、柱、不可拆改边界。",
+            "reason": "LiDAR 和普通房间数据无法可靠判断结构安全。",
+            "required": True,
+        })
+    if not constraints.get("mep"):
+        questions.append({
+            "category": "mep",
+            "question": "请确认管井、烟道、上下水、燃气和强弱电位置。",
+            "reason": "这些约束决定厨房、卫生间和机电改造边界。",
+            "required": True,
+        })
+    return questions
+
+
+def _normalize_profile_rooms(rooms):
+    result = []
+    for room in rooms:
+        if isinstance(room, str):
+            result.append({"name": room, "area_m2": 0, "width_mm": 0, "length_mm": 0, "requirements": {}})
+            continue
+        if not isinstance(room, dict):
+            continue
+        width = _num(room.get("width_mm") or room.get("width"))
+        length = _num(room.get("length_mm") or room.get("height_mm") or room.get("length") or room.get("height"))
+        area = _num(room.get("area_m2") or room.get("area"))
+        if not area and width and length:
+            area = width * length / 1_000_000
+        result.append({
+            "name": room.get("name", ""),
+            "area_m2": round(area, 2),
+            "width_mm": int(width or 0),
+            "length_mm": int(length or 0),
+            "orientation": room.get("orientation", ""),
+            "adjacent_to": room.get("adjacent_to", []),
+            "requirements": room.get("requirements") or {},
+            "floor_points": room.get("floor_points") or [],
+            "source": room.get("source", ""),
+            "perimeter_m": _num(room.get("perimeter_m")),
+        })
+    return [room for room in result if room.get("name")]
+
+
+def _merge_rooms(base_rooms, evidence_rooms):
+    by_name = {room.get("name"): dict(room) for room in base_rooms if room.get("name")}
+    for room in evidence_rooms:
+        name = room.get("name")
+        if not name:
+            continue
+        current = by_name.get(name, {})
+        merged = dict(current)
+        for key, value in room.items():
+            if value not in (None, "", [], {}) and not merged.get(key):
+                merged[key] = value
+        by_name[name] = merged
+    return list(by_name.values())
+
+
+def _merge_cad_geometry(geometry, cad_plan):
+    merged = dict(geometry)
+    merged["source_type"] = "cad"
+    detected_rooms = _cad_rooms_to_profile_rooms(cad_plan)
+    if detected_rooms:
+        merged["rooms"] = _merge_rooms(
+            _normalize_profile_rooms(merged.get("rooms") or []),
+            detected_rooms,
+        )
+    base_confidence = 0.68 if detected_rooms else 0.6
+    if cad_plan.get("doors") and cad_plan.get("windows"):
+        base_confidence = max(base_confidence, 0.72)
+    merged["confidence"] = max(_num(merged.get("confidence")), base_confidence)
+    bounds = cad_plan.get("bounds")
+    if bounds:
+        merged["bounds_mm"] = {
+            "min_x": bounds[0],
+            "min_y": bounds[1],
+            "max_x": bounds[2],
+            "max_y": bounds[3],
+        }
+    merged["doors"] = _segments_to_items(cad_plan.get("doors") or [])
+    merged["windows"] = _segments_to_items(cad_plan.get("windows") or [])
+    if cad_plan.get("total_lines"):
+        merged["notes"] = list(merged.get("notes") or []) + [f"CAD识别到 {cad_plan['total_lines']} 条线段"]
+    if detected_rooms:
+        merged["notes"] = list(merged.get("notes") or []) + [f"CAD识别到 {len(detected_rooms)} 个疑似空间闭环"]
+    merged["cad_summary"] = {
+        "source": cad_plan.get("source", ""),
+        "layer_count": len(cad_plan.get("layers") or []),
+        "wall_count": cad_plan.get("wall_count", len(cad_plan.get("walls") or [])),
+        "door_count": cad_plan.get("door_count", len(cad_plan.get("doors") or [])),
+        "window_count": cad_plan.get("window_count", len(cad_plan.get("windows") or [])),
+        "detected_room_count": len(detected_rooms),
+    }
+    return merged
+
+
+def _cad_rooms_to_profile_rooms(cad_plan):
+    rooms = []
+    for idx, room in enumerate(cad_plan.get("detected_rooms") or []):
+        points = room.get("floor_points") or []
+        xs = [_num(p.get("x")) for p in points if isinstance(p, dict)]
+        ys = [_num(p.get("y")) for p in points if isinstance(p, dict)]
+        width = max(xs) - min(xs) if xs else 0
+        length = max(ys) - min(ys) if ys else 0
+        rooms.append({
+            "name": room.get("name") or f"CAD识别空间{idx + 1}",
+            "area_m2": _num(room.get("area_m2")),
+            "width_mm": int(width or 0),
+            "length_mm": int(length or 0),
+            "floor_points": points,
+            "perimeter_m": _num(room.get("perimeter_m")),
+            "source": "cad_dxf",
+        })
+    return rooms
+
+
+def _merge_scan_geometry(geometry, scan_summary, has_cad):
+    merged = dict(geometry)
+    merged["source_type"] = "mixed" if has_cad else "scan"
+    merged["confidence"] = max(_num(merged.get("confidence")), _num(scan_summary.get("confidence")) or 0.55)
+    if scan_summary.get("bounds_mm"):
+        merged["bounds_mm"] = scan_summary["bounds_mm"]
+    if scan_summary.get("rooms"):
+        merged["rooms"] = _merge_rooms(
+            _normalize_profile_rooms(merged.get("rooms") or []),
+            _normalize_profile_rooms(scan_summary.get("rooms") or []),
+        )
+    openings = scan_summary.get("openings") or []
+    doors = [item for item in openings if item.get("type") == "door"]
+    windows = [item for item in openings if item.get("type") == "window"]
+    if doors:
+        merged["doors"] = doors
+    if windows:
+        merged["windows"] = windows
+    merged["scan_summary"] = {
+        "source": scan_summary.get("source", ""),
+        "format": scan_summary.get("format", ""),
+        "source_type": scan_summary.get("source_type", ""),
+        "confidence": scan_summary.get("confidence", 0),
+    }
+    return merged
+
+
+def _segments_to_items(segments):
+    items = []
+    for seg in segments:
+        if len(seg) >= 4:
+            items.append({"start": [seg[0], seg[1]], "end": [seg[2], seg[3]]})
+    return items
+
+
+def _collect_constraints(conditions):
+    special = conditions.get("special_requirements") or {}
+    constraints = {
+        "structural": [],
+        "mep": [],
+        "budget": conditions.get("budget") or {},
+        "unknowns": [],
+    }
+    for key, value in special.items():
+        text = f"{key}: {value}"
+        if any(word in str(key) for word in ("承重", "梁", "柱", "结构")):
+            constraints["structural"].append(text)
+        elif any(word in str(key) for word in ("水", "电", "燃气", "烟道", "管井")):
+            constraints["mep"].append(text)
+        else:
+            constraints["unknowns"].append(text)
+    return constraints
+
+
+def _describe_object(project, rooms):
+    house_type = project.get("house_type") or "未知空间"
+    area = project.get("area_m2")
+    room_names = "、".join(room.get("name", "") for room in rooms[:6] if room.get("name"))
+    area_text = f"{area}㎡" if area else "面积未知"
+    return f"{house_type}，{area_text}，包含：{room_names or '空间清单未知'}"
+
+
+def _summarize_profile(profile):
+    project = profile.get("project") or {}
+    geometry = profile.get("geometry") or {}
+    rooms = geometry.get("rooms") or []
+    return {
+        "design_object": (profile.get("design_object") or {}).get("description", ""),
+        "room_count": len(rooms),
+        "known_area_m2": project.get("area_m2") or round(sum(_num(room.get("area_m2")) for room in rooms), 2),
+        "geometry_source": geometry.get("source_type", ""),
+        "geometry_confidence": geometry.get("confidence", 0),
+        "readiness_score": (profile.get("readiness") or {}).get("score", 0),
+    }
+
+
+def _num(value):
+    if value in (None, ""):
+        return 0
+    if isinstance(value, (int, float)):
+        return float(value)
+    try:
+        return float(str(value).replace(",", "").replace("㎡", "").replace("m2", "").strip())
+    except ValueError:
+        return 0
