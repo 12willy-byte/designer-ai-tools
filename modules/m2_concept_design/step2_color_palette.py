@@ -20,7 +20,12 @@ SYSTEM_PROMPT = """你是中国顶尖的室内设计色彩专家。根据客户�
   "accent_color": {"name":"点缀色名","hex":"#HEX","rgb":[R,G,B],"ratio":10,"usage":"抱枕、装饰品"},
   "wood_tone": "木色建议",
   "room_suggestions": [{"room":"客厅","base":"#HEX","accent":"#HEX","note":"说明"}]
-}"""
+}
+
+【事实与假设边界 — 必须严格遵守】
+1. room_suggestions 只覆盖输入中列出的房间，不得新增输入中不存在的空间。
+2. wood_tone 与各字段只描述材质/色系，禁止编造具体品牌名和型号；如举例必须标注"示例品牌，可替换"。
+3. 输入未直接给出的信息如需推断，在 note 中以"假设："开头标注，不得与事实混排。"""
 
 
 def hex_to_rgb(h):

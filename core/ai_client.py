@@ -163,6 +163,7 @@ class AIClient:
                     "door_hardware": "黑色哑光",
                     "baseboard": "同门套或墙面同色",
                 },
+                "assumptions": ["假设：演示数据，家庭成员年龄、品牌与价位档需设计师复核。"],
             }, ensure_ascii=False)
         if "布局" in prompt or "layout" in lower:
             return json.dumps({

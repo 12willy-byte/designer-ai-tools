@@ -90,10 +90,13 @@ def build_pptx(conditions_json_path, output_path):
                "%s  ·  概念方案" % style_name, font_size=28, color=COLORS["accent"])
 
     area_str = ""
-    if space.get("total_area_m2"):
-        area_str += "%.0f m²" % space["total_area_m2"]
+    building_area = project.get("area_m2") or project.get("area")
+    if building_area:
+        area_str += "建筑面积 %s m²" % building_area
+    elif space.get("total_area_m2"):
+        area_str += "房间加总约 %.0f m²（不含公摊/墙体）" % space["total_area_m2"]
     if space.get("total_rooms"):
-        area_str += "  ·  %d室" % space["total_rooms"]
+        area_str += "  ·  %d 个房间" % space["total_rooms"]
     add_textbox(slide, Inches(1), Inches(4.6), Inches(10), Inches(0.6),
                area_str, font_size=18, color=RGBColor(0x88, 0x88, 0x88))
 
@@ -234,6 +237,65 @@ def build_pptx(conditions_json_path, output_path):
             left = (W - img_w) // 2
             top = Inches(1.3)
             add_img(slide, atmos_path, left, top, img_w, img_h)
+
+    # ── 倒数第二页: 假设与口径说明 ──
+    # 汇总各步骤的推断标注与面积口径，避免假设与事实混排流入交付物
+    assumption_items = []
+
+    # 1) 设计定位正文中以「假设」开头的行
+    if brief_text:
+        for line in brief_text.splitlines():
+            stripped = line.strip().lstrip("-•·*").strip()
+            if stripped.startswith("假设") and stripped not in assumption_items:
+                assumption_items.append(stripped)
+
+    # 2) 材质方案 JSON 的 assumptions 数组
+    mat_json_path = os.path.join(out_dir, "材质方案.json")
+    if os.path.exists(mat_json_path):
+        try:
+            mat_data = json.load(open(mat_json_path, "r", encoding="utf-8"))
+            for item in mat_data.get("assumptions") or []:
+                text = str(item).strip()
+                if text and text not in assumption_items:
+                    assumption_items.append(text)
+        except Exception:
+            pass
+
+    # 3) 面积口径说明（建筑面积 vs 房间加总）
+    caliber_notes = []
+    building_area = project.get("area_m2") or project.get("area")
+    room_total = space.get("total_area_m2")
+    if building_area and room_total:
+        caliber_notes.append(
+            "面积口径：本方案总面积以建筑面积 %s㎡ 为准；各房间加总约 %.1f㎡（不含公摊/墙体），两者差异属正常口径差。"
+            % (building_area, room_total))
+    elif room_total and not building_area:
+        caliber_notes.append(
+            "面积口径：输入未提供建筑面积，本方案面积均为房间加总约 %.1f㎡（不含公摊/墙体）。"
+            % room_total)
+
+    if assumption_items or caliber_notes:
+        slide = prs.slides.add_slide(prs.slide_layouts[6])
+        add_bg(slide)
+
+        add_rect(slide, 0, 0, Pt(8), H, COLORS["accent"])
+        add_textbox(slide, Inches(0.6), Inches(0.5), Inches(6), Inches(0.7),
+                   "假设与口径说明", font_size=28, color=COLORS["dark"], bold=True)
+        add_textbox(slide, Inches(0.6), Inches(1.15), Inches(11), Inches(0.4),
+                   "以下内容为 AI 推断或口径说明，非客户输入事实，请设计师复核后再向客户呈现",
+                   font_size=13, color=COLORS["gray"])
+
+        y = Inches(1.8)
+        for note in caliber_notes:
+            add_textbox(slide, Inches(0.8), y, Inches(11.5), Inches(0.5),
+                       note, font_size=15, color=COLORS["dark"])
+            y += Inches(0.55)
+        for item in assumption_items[:12]:
+            add_textbox(slide, Inches(0.8), y, Inches(11.5), Inches(0.5),
+                       "· " + item, font_size=15, color=COLORS["gray"])
+            y += Inches(0.5)
+            if y > Inches(6.8):
+                break
 
     # ── 最后一页: 结尾 ──
     slide = prs.slides.add_slide(prs.slide_layouts[6])

@@ -18,8 +18,8 @@ SYSTEM_PROMPT = """你是中国顶尖的室内设计材质专家。根据客户�
   "materials": [
     {
       "room": "客厅",
-      "floor": {"type":"橡木地板","color":"浅原木色","finish":"哑光","code":"参考型号"},
-      "wall": {"type":"艺术涂料","color":"暖白色","finish":"蛋壳光","code":"参考型号"},
+      "floor": {"type":"橡木地板","color":"浅原木色","finish":"哑光","code":""},
+      "wall": {"type":"艺术涂料","color":"暖白色","finish":"蛋壳光","code":""},
       "feature_wall": {"type":"木格栅","color":"原木色","finish":"开放漆","code":""},
       "ceiling": {"type":"乳胶漆","color":"白色","finish":"哑光","code":""},
       "notes": "地面通铺橡木地板延伸空间感"
@@ -32,8 +32,16 @@ SYSTEM_PROMPT = """你是中国顶尖的室内设计材质专家。根据客户�
     "baseboard": "实木 浅橡木色 60mm高",
     "cabinet_face": "PET 肤感暖白"
   },
-  "color_palette_link": "与之前推荐的暖灰白+雾霾蓝+陶土橙一致"
-}"""
+  "color_palette_link": "与之前推荐的暖灰白+雾霾蓝+陶土橙一致",
+  "assumptions": ["假设：……（本方案中所有推断集中列在这里）"]
+}
+
+【事实与假设边界 — 必须严格遵守】
+1. 空间事实：只为输入中列出的房间生成材质方案，不得新增、合并或改写输入中不存在的空间；户型与房间数量以输入为准。
+2. 品牌与型号：输入未提供品牌偏好时，禁止编造具体品牌名和型号。每个材质条目只描述材质/颜色/工艺，"code" 字段留空或填价位档（如"ENF级颗粒板，约260元/㎡"）。
+   如确需举例帮助客户理解，必须写成"示例品牌，可替换：XX"，且示例品牌放在 notes 中，不得出现在 type/code 字段。
+3. 推断集中标注：凡输入未直接给出的信息（家庭成员年龄推断、生活习惯推断、未确认的现场条件等），不得写进 materials 的描述性文字里与事实混排，统一放入顶层 "assumptions" 数组，每条以"假设："开头；没有推断时输出空数组。
+4. 面积口径：引用总面积时以输入的建筑面积为准；如引用房间面积加总，必须注明"房间加总约XX㎡（不含公摊/墙体）"。"""
 
 
 def hex_to_rgb(h):
@@ -49,14 +57,28 @@ def generate_material_board(conditions_json_path):
     space = conditions.get("space_data", {})
     budget = conditions.get("budget", {})
     rooms_req = conditions.get("rooms_requirements", {})
+    project = conditions.get("project", {})
 
     prompt = "请为以下项目推荐材质方案：\n\n"
     prompt += "风格: %s\n" % style.get("primary_style","未指定")
     prompt += "色调: %s\n" % style.get("color_tone","未指定")
     prompt += "设计关键词: %s\n" % style.get("keywords","")
 
+    building_area = project.get("area_m2") or project.get("area")
+    if building_area:
+        prompt += "建筑面积(输入口径，总面积以此为准): %s m2\n" % building_area
+    if space.get("total_area_m2"):
+        prompt += "房间加总约 %.1f m2（不含公摊/墙体，仅供参考）\n" % space["total_area_m2"]
+
+    # 品牌偏好：输入未提供时明确告知模型，禁止编造品牌型号
+    brand_pref = style.get("brand_preference") or style.get("brand") or ""
+    if brand_pref:
+        prompt += "品牌偏好: %s\n" % brand_pref
+    else:
+        prompt += "品牌偏好: 输入未提供 —— 禁止编造具体品牌名和型号，只描述材质/颜色/工艺/价位档\n"
+
     if space.get("rooms"):
-        prompt += "\n空间列表:\n"
+        prompt += "\n空间列表（输入事实，只为这些房间生成方案，不得增减）:\n"
         for rm in space["rooms"]:
             req = rooms_req.get(rm["name"], {})
             prompt += "- %s (%d x %d mm)" % (rm["name"], rm["width_mm"], rm["height_mm"])
@@ -80,6 +102,8 @@ def generate_material_board(conditions_json_path):
         data = client.chat_json(SYSTEM_PROMPT, prompt, temperature=0.6, max_tokens=2500)
     except Exception as exc:
         data = {"materials": [], "design_concept": "材质方案生成失败: %s" % exc}
+    if not isinstance(data.get("assumptions"), list):
+        data["assumptions"] = []
 
     # 生成材质板图片
     base_dir = os.path.dirname(os.path.abspath(conditions_json_path))

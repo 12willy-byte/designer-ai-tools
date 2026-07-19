@@ -25,7 +25,12 @@ SYSTEM_PROMPT = """你是中国顶尖的室内设计布局规划专家。根据�
   ],
   "circulation_analysis": "整体动线分析",
   "design_highlights": ["亮点1"]
-}"""
+}
+
+【事实与假设边界 — 必须严格遵守】
+1. rooms 只覆盖输入中列出的房间，房间名称与数量以输入为准，不得新增、合并或改写输入中不存在的空间。
+2. 家具与材料只描述品类/尺寸/材质，禁止编造具体品牌名和型号；如举例必须标注"示例品牌，可替换"。
+3. 输入未直接给出的信息（家庭成员年龄推断、未确认的现场条件等）如需引用，以"假设："开头标注，不得与事实混排。"""
 
 
 def generate_layout(conditions_json_path: str, dxf_input_path: str = None, dxf_output_path: str = None) -> dict:
