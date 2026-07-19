@@ -100,9 +100,20 @@ AI_DEMO_MODE=1 python3 -m modules.m2_concept_design.mvp_pipeline \
 
 | 变量名 | 说明 |
 |--------|------|
+| AI_PROVIDER | 模型供应商：deepseek（默认，推荐）/ openai / moonshot |
+| AI_MODEL / AI_API_KEY / AI_BASE_URL | 通用覆盖项，优先级高于各厂商专有变量 |
 | DEEPSEEK_API_KEY | DeepSeek API 密钥 |
 | DEEPSEEK_BASE_URL | API 地址（默认官方） |
+| OPENAI_API_KEY / MOONSHOT_API_KEY | 其他厂商密钥（可选，用于模型对比） |
 | DASHSCOPE_API_KEY | 阿里云 DashScope 密钥（可选） |
+
+### 模型选型
+
+经真实模式同场对比（见 `outputs/model-compare/quality-report.md`），**默认推荐 `deepseek-chat`**：中文设计文案贴合度与推理模型 `deepseek-reasoner` 同档，但速度快约 2 倍、成本更低、输出结构更稳定。可用 `scripts/compare_models.py` 自行复测：
+
+```bash
+python3 scripts/compare_models.py --providers deepseek,openai
+```
 
 ## 自动化模块顺序
 

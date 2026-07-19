@@ -34,3 +34,9 @@ node_modules/
 
 # Temp/dev scripts
 _*.py
+
+# Model comparison artifacts (report is tracked via exception)
+outputs/*
+!outputs/model-compare/
+outputs/model-compare/*
+!outputs/model-compare/quality-report.md

@@ -1,21 +1,69 @@
 """
 Unified AI client for MVP concept generation.
 
-Production mode requires DEEPSEEK_API_KEY. Demo mode is explicit via
-AI_DEMO_MODE=1, so mock output cannot be mistaken for a real model result.
+Supports multiple OpenAI-compatible providers (deepseek / openai / moonshot)
+selected via the AI_PROVIDER environment variable. Production mode requires an
+API key (AI_API_KEY or the provider-specific variable). Demo mode is explicit
+via AI_DEMO_MODE=1, so mock output cannot be mistaken for a real model result.
+
+Configuration priority (highest first):
+  AI_API_KEY / AI_BASE_URL / AI_MODEL  (generic)
+  <PROVIDER>_API_KEY / <PROVIDER>_BASE_URL / <PROVIDER>_MODEL  (e.g. DEEPSEEK_API_KEY)
+  built-in provider presets
 """
 import json
 import os
 import re
 import urllib.request
 
+# Built-in provider presets: base_url, default model, provider-specific env prefix.
+PROVIDER_PRESETS = {
+    "deepseek": {
+        "base_url": "https://api.deepseek.com/v1",
+        "model": "deepseek-chat",
+        "key_env": "DEEPSEEK_API_KEY",
+    },
+    "openai": {
+        "base_url": "https://api.openai.com/v1",
+        "model": "gpt-4o",
+        "key_env": "OPENAI_API_KEY",
+    },
+    "moonshot": {
+        "base_url": "https://api.moonshot.cn/v1",
+        "model": "moonshot-v1-8k",
+        "key_env": "MOONSHOT_API_KEY",
+    },
+}
+
+DEFAULT_PROVIDER = "deepseek"
+
 
 class AIClient:
-    def __init__(self, provider="deepseek", demo_mode=None):
+    def __init__(self, provider=None, demo_mode=None):
+        provider = (provider or os.environ.get("AI_PROVIDER") or DEFAULT_PROVIDER).strip().lower()
+        if provider not in PROVIDER_PRESETS:
+            raise ValueError(
+                f"Unknown AI provider: {provider!r}. "
+                f"Supported: {', '.join(sorted(PROVIDER_PRESETS))}"
+            )
+        preset = PROVIDER_PRESETS[provider]
+        prefix = provider.upper()
         self.provider = provider
-        self.api_key = os.environ.get("DEEPSEEK_API_KEY", "")
-        self.base_url = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
-        self.model = os.environ.get("DEEPSEEK_MODEL") or os.environ.get("AI_MODEL", "deepseek-chat")
+        self.api_key = (
+            os.environ.get("AI_API_KEY")
+            or os.environ.get(preset["key_env"])
+            or os.environ.get(f"{prefix}_API_KEY", "")
+        )
+        self.base_url = (
+            os.environ.get("AI_BASE_URL")
+            or os.environ.get(f"{prefix}_BASE_URL")
+            or preset["base_url"]
+        )
+        self.model = (
+            os.environ.get("AI_MODEL")
+            or os.environ.get(f"{prefix}_MODEL")
+            or preset["model"]
+        )
         self.timeout = int(os.environ.get("AI_TIMEOUT", "60"))
         if demo_mode is None:
             demo_mode = os.environ.get("AI_DEMO_MODE", "").lower() in {"1", "true", "yes"}
@@ -24,6 +72,13 @@ class AIClient:
     @property
     def available(self):
         return bool(self.api_key)
+
+    def _not_configured_error(self):
+        key_env = PROVIDER_PRESETS[self.provider]["key_env"]
+        return RuntimeError(
+            f"AI API key for provider '{self.provider}' is not configured. "
+            f"Set AI_API_KEY or {key_env}, or set AI_DEMO_MODE=1 for demo output."
+        )
 
     def chat(self, system_prompt, user_prompt=None, temperature=0.3, max_tokens=2000):
         if user_prompt is None:
@@ -39,7 +94,7 @@ class AIClient:
         if self.demo_mode:
             return self._mock_chat(prompt_for_mock)
         if not self.available:
-            raise RuntimeError("DEEPSEEK_API_KEY is not configured. Set AI_DEMO_MODE=1 for demo output.")
+            raise self._not_configured_error()
 
         url = self.base_url.rstrip("/") + "/chat/completions"
         body = json.dumps({
@@ -64,6 +119,7 @@ class AIClient:
         if self.demo_mode:
             return json.dumps({
                 "demo": True,
+                "provider": self.provider,
                 "room_type": "living_room",
                 "estimated_length_m": 5.0,
                 "estimated_width_m": 4.0,
@@ -72,7 +128,7 @@ class AIClient:
                 "visible_elements": [],
             }, ensure_ascii=False)
         if not self.available:
-            raise RuntimeError("DEEPSEEK_API_KEY is not configured. Set AI_DEMO_MODE=1 for demo output.")
+            raise self._not_configured_error()
         return self.chat(prompt, max_tokens=max_tokens)
 
     def _mock_chat(self, prompt):
@@ -80,6 +136,7 @@ class AIClient:
         if "色彩" in prompt or "color" in lower:
             return json.dumps({
                 "demo": True,
+                "provider": self.provider,
                 "scheme_name": "演示色彩方案",
                 "description": "暖白、木色与低饱和点缀色组成的稳妥初稿",
                 "base_color": {"name": "暖白", "hex": "#F5F0E8", "rgb": [245, 240, 232], "ratio": 60, "usage": "墙面、顶面"},
@@ -91,6 +148,7 @@ class AIClient:
         if "材质" in prompt or "material" in lower:
             return json.dumps({
                 "demo": True,
+                "provider": self.provider,
                 "design_concept": "以耐用、易维护的基础材质建立安静背景，再用木色提升温度。",
                 "materials": [{
                     "room": "客厅",
@@ -109,6 +167,7 @@ class AIClient:
         if "布局" in prompt or "layout" in lower:
             return json.dumps({
                 "demo": True,
+                "provider": self.provider,
                 "layout_name": "演示布局方案",
                 "description": "保留主要动线，以客餐厅连续界面提升空间感。",
                 "rooms": [{
@@ -124,6 +183,7 @@ class AIClient:
         if "room" in lower and ("furniture" in lower or "place" in lower):
             return json.dumps([{
                 "demo": True,
+                "provider": self.provider,
                 "spec_id": "sofa-3seat",
                 "name": "Sofa",
                 "category": "sofa",
@@ -133,7 +193,10 @@ class AIClient:
                 "depth_mm": 900,
                 "height_mm": 850,
             }], ensure_ascii=False)
-        return "【演示模式】这是自动生成的设计定位初稿：以客户生活方式为核心，优先建立清晰动线、充足收纳与稳定的材料基调。真实项目中应由设计师结合现场条件、预算和客户偏好继续深化。"
+        return (
+            f"【演示模式·provider={self.provider}】这是自动生成的设计定位初稿：以客户生活方式为核心，"
+            "优先建立清晰动线、充足收纳与稳定的材料基调。真实项目中应由设计师结合现场条件、预算和客户偏好继续深化。"
+        )
 
 
 def _parse_json_object(raw):
@@ -143,17 +206,52 @@ def _parse_json_object(raw):
         pass
     match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", raw, re.DOTALL)
     if match:
-        return json.loads(match.group(1))
+        try:
+            return json.loads(match.group(1))
+        except json.JSONDecodeError:
+            pass
     match = re.search(r"(\{.*\})", raw, re.DOTALL)
     if match:
-        return json.loads(match.group(1))
+        try:
+            return json.loads(match.group(1))
+        except json.JSONDecodeError:
+            pass
+    # Tolerance for real-LLM output: extract the outermost balanced {...} block,
+    # which survives trailing commentary and non-greedy brace mismatches.
+    start = raw.find("{")
+    if start != -1:
+        depth = 0
+        in_str = False
+        escape = False
+        for i in range(start, len(raw)):
+            ch = raw[i]
+            if escape:
+                escape = False
+                continue
+            if ch == "\\" and in_str:
+                escape = True
+                continue
+            if ch == '"':
+                in_str = not in_str
+                continue
+            if in_str:
+                continue
+            if ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+                if depth == 0:
+                    try:
+                        return json.loads(raw[start:i + 1])
+                    except json.JSONDecodeError:
+                        break
     raise ValueError("AI response did not contain a JSON object")
 
 
 _client = None
 
 
-def get_client(provider="deepseek", demo_mode=None):
+def get_client(provider=None, demo_mode=None):
     global _client
     if _client is None:
         _client = AIClient(provider=provider, demo_mode=demo_mode)

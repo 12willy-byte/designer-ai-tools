@@ -34,13 +34,11 @@ def generate_mood_board(conditions_json_path):
     img = Image.new("RGB", (W, H), "#F5F3F0")
     draw = ImageDraw.Draw(img)
 
-    try:
-        font_title = ImageFont.truetype("C:/Windows/Fonts/msyh.ttc", 52)
-        font_sub = ImageFont.truetype("C:/Windows/Fonts/msyh.ttc", 32)
-        font_body = ImageFont.truetype("C:/Windows/Fonts/msyh.ttc", 22)
-        font_small = ImageFont.truetype("C:/Windows/Fonts/msyh.ttc", 18)
-    except:
-        font_title = font_sub = font_body = font_small = ImageFont.load_default()
+    from core.font_utils import load_cjk_font
+    font_title = load_cjk_font(52)
+    font_sub = load_cjk_font(32)
+    font_body = load_cjk_font(22)
+    font_small = load_cjk_font(18)
 
     # ── 上半：标题区 ──
     draw.rectangle([0, 0, W, 90], fill="#1A1A2E")
@@ -93,11 +91,35 @@ def generate_mood_board(conditions_json_path):
 
     # 画一个大的装饰色块（代表整体氛围）
     base_color_hex = "#F5EDE4"
+    colors_info = [
+        ("主色", "#F5F0EB", "暖灰白"),
+        ("辅色", "#7A9C9E", "雾霾蓝"),
+        ("点缀", "#D4836D", "陶土橙"),
+    ]
+    wood_label = "浅橡木"
     try:
-        pal_data = json.load(open(os.path.join(out_dir, "色彩方案色板.json"),"r"))
-        base_color_hex = pal_data.get("base_color",{}).get("hex","#F5EDE4")
-    except:
+        pal_data = json.load(open(os.path.join(out_dir, "色彩方案色板.json"), "r", encoding="utf-8"))
+        base_color_hex = pal_data.get("base_color", {}).get("hex", base_color_hex)
+        # 右侧色板使用真实色彩方案，避免意向板与色板步骤互相矛盾
+        swatches = []
+        for label, key in (("主色", "base_color"), ("辅色", "secondary_color"), ("点缀", "accent_color")):
+            c = pal_data.get(key) or {}
+            if c.get("hex"):
+                swatches.append((label, c["hex"], c.get("name", "")))
+        if swatches:
+            colors_info = swatches
+        if pal_data.get("wood_tone"):
+            wood_label = str(pal_data["wood_tone"]).split("或")[0].split("，")[0].strip() or wood_label
+    except Exception:
         pass
+
+    # 底部标签来自输入的风格与关键词，不使用与项目无关的固定文案
+    mood_tags = []
+    if style.get("primary_style"):
+        mood_tags.append(style["primary_style"])
+    mood_tags += [k for k in keywords if k not in mood_tags][:4]
+    if not mood_tags:
+        mood_tags = ["现代简约", "中性色系", "通透", "温润"]
 
     # 抽象氛围背景
     for i in range(5):
@@ -109,16 +131,21 @@ def generate_mood_board(conditions_json_path):
 
     # 设计定位文本
     brief_path = os.path.join(out_dir, "设计定位.txt")
-    brief_text = ""
+    brief_full = ""
     if os.path.exists(brief_path):
-        brief_text = open(brief_path, "r", encoding="utf-8").read()[:200]
+        brief_full = open(brief_path, "r", encoding="utf-8").read()
     else:
-        brief_text = "以中性色为基调的现代简约住宅，通过木饰面与微水泥的材质碰撞，营造温润有序的居住空间。"
+        brief_full = "以中性色为基调的现代简约住宅，通过木饰面与微水泥的材质碰撞，营造温润有序的居住空间。"
+    # 意向板图片空间有限，仅绘制开头片段；完整文本保留在 设计定位.txt 中。
+    brief_text = brief_full[:200]
 
     draw.text((cx+20, cy+20), "设计定位", fill="#1A1A2E", font=font_sub)
-    draw.text((cx+20, cy+65), brief_text[:150], fill="#666666", font=font_body)
-    if len(brief_text) > 150:
-        draw.text((cx+20, cy+65+90), brief_text[150:280], fill="#666666", font=font_body)
+    # 手动换行，避免长文本单行溢出或行与行重叠；换行符会让 Pillow 在同一起点叠打
+    flat_text = " ".join(brief_text.split())
+    wrap_width = 38
+    wrapped = [flat_text[i:i + wrap_width] for i in range(0, min(len(flat_text), 190), wrap_width)]
+    for li, line in enumerate(wrapped[:5]):
+        draw.text((cx+20, cy+60 + li * 42), line, fill="#666666", font=font_body)
 
     # 空间数据展示
     sy = cy + 280
@@ -139,11 +166,6 @@ def generate_mood_board(conditions_json_path):
     draw.text((rx, ry), "色板", fill="#1A1A2E", font=font_sub)
     ry += 45
 
-    colors_info = [
-        ("主色", "#F5F0EB", "暖灰白"),
-        ("辅色", "#7A9C9E", "雾霾蓝"),
-        ("点缀", "#D4836D", "陶土橙"),
-    ]
     for c_label, c_hex, c_name in colors_info:
         try:
             c_rgb = tuple(int(c_hex.lstrip("#")[i:i+2], 16) for i in (0,2,4))
@@ -155,14 +177,13 @@ def generate_mood_board(conditions_json_path):
         ry += 75
 
     # 木色
-    draw.text((rx, ry+5), "木色: 浅橡木", fill="#555", font=font_body)
+    draw.text((rx, ry+5), "木色: %s" % wood_label, fill="#555", font=font_body)
     draw.rectangle([rx, ry+32, rx+80, ry+45], fill="#D4A76A", outline="#DDD")
 
     # ── 底部：全局标签 ──
     bar_y = H - 60
     draw.rectangle([0, bar_y, W, H], fill="#1A1A2E")
-    tags = ["现代简约", "中性色系", "LDK一体化",
-            "智能家居预留", "高环保标准"]
+    tags = mood_tags
     tx = 40
     for tag in tags:
         tw = draw.textlength(tag, font=font_small)
@@ -174,9 +195,9 @@ def generate_mood_board(conditions_json_path):
     path = os.path.join(out_dir, "风格意向板.png")
     img.save(path)
 
-    # 同时保存设计定位文本供后面步骤使用
+    # 同时保存设计定位文本供后面步骤使用（完整文本，不截断）
     with open(os.path.join(out_dir, "设计定位.txt"), "w", encoding="utf-8") as f:
-        f.write(brief_text)
+        f.write(brief_full)
 
     return path
 

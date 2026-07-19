@@ -61,12 +61,10 @@ def render_palette_card(data: dict, output_dir: str) -> str:
     img = Image.new("RGB", (width, height), "#F5F5F5")
     draw = ImageDraw.Draw(img)
 
-    try:
-        font_l = ImageFont.truetype("C:/Windows/Fonts/msyh.ttc", 36)
-        font_m = ImageFont.truetype("C:/Windows/Fonts/msyh.ttc", 24)
-        font_s = ImageFont.truetype("C:/Windows/Fonts/msyh.ttc", 18)
-    except Exception:
-        font_l = font_m = font_s = ImageFont.load_default()
+    from core.font_utils import load_cjk_font
+    font_l = load_cjk_font(36)
+    font_m = load_cjk_font(24)
+    font_s = load_cjk_font(18)
 
     draw.text((40, 30), data.get("scheme_name", "色彩方案"), fill="#333", font=font_l)
     if data.get("description"):

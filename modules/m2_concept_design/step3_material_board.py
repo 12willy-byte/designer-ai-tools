@@ -112,20 +112,25 @@ MATERIAL_COLORS = {
     "原木色": "#D4A76A", "浅原木": "#DEC8A8",
 }
 
+# 全局材质建议字段的中文标签（避免交付图上出现原始 JSON 键名）
+_GLOBAL_REC_LABELS = {
+    "door_material": "室内门",
+    "door_hardware": "门五金",
+    "window_frame": "窗框",
+    "baseboard": "踢脚线",
+    "cabinet_face": "柜体饰面",
+}
+
 
 def render_material_board(data, output_dir):
     width, height = 1400, 900
     img = Image.new("RGB", (width, height), "#FAFAF8")
     draw = ImageDraw.Draw(img)
 
-    try:
-        font_l = ImageFont.truetype("C:/Windows/Fonts/msyh.ttc", 30)
-        font_m = ImageFont.truetype("C:/Windows/Fonts/msyh.ttc", 22)
-        font_s = ImageFont.truetype("C:/Windows/Fonts/msyh.ttc", 17)
-    except:
-        font_l = ImageFont.load_default()
-        font_m = font_l
-        font_s = font_l
+    from core.font_utils import load_cjk_font
+    font_l = load_cjk_font(30)
+    font_m = load_cjk_font(22)
+    font_s = load_cjk_font(17)
 
     draw.text((40, 25), "材质方案", fill="#333", font=font_l)
     concept = data.get("design_concept","")
@@ -195,10 +200,11 @@ def render_material_board(data, output_dir):
         draw.text((40, yr), "全局材质建议", fill="#333", font=font_m)
         ry = yr + 40
         for key, val in global_rec.items():
+            label = _GLOBAL_REC_LABELS.get(key, key)
             if isinstance(val, dict):
-                text = "%s: %s %s" % (key, val.get("type",""), val.get("color",""))
+                text = "%s: %s %s" % (label, val.get("type",""), val.get("color",""))
             else:
-                text = "%s: %s" % (key, val)
+                text = "%s: %s" % (label, val)
             draw.text((60, ry), text, fill="#555", font=font_s)
             ry += 30
 
