@@ -262,6 +262,86 @@ def build_pptx(conditions_json_path, output_path):
                     if y > Inches(6.5):
                         break
 
+    # ── Slide: 预算总览（M5，闸门放行且已生成估算时出现）──
+    budget_json_path = os.path.join(out_dir, "budget_estimate.json")
+    budget_data = None
+    if os.path.exists(budget_json_path):
+        try:
+            budget_data = json.load(open(budget_json_path, "r", encoding="utf-8"))
+        except Exception:
+            budget_data = None
+
+    atmos_start = 7
+    if budget_data and budget_data.get("status") == "estimate" and budget_data.get("rooms"):
+        slide = prs.slides.add_slide(prs.slide_layouts[6])
+        add_bg(slide)
+
+        add_textbox(slide, Inches(0.8), Inches(0.4), Inches(6), Inches(0.6),
+                   "07  预算总览", font_size=28, color=COLORS["dark"], bold=True)
+        atmos_start = 8
+
+        totals = budget_data.get("totals") or {}
+        comparison = budget_data.get("budget_comparison") or {}
+        tier = budget_data.get("tier") or {}
+        add_textbox(slide, Inches(0.8), Inches(1.05), Inches(11.5), Inches(0.5),
+                   "总价区间：%.0f ~ %.0f 元（约 %.1f ~ %.1f 万元） · 价格档次：%s（参考价位档，需按当地市场校准）" % (
+                       totals.get("low", 0), totals.get("high", 0),
+                       totals.get("low", 0) / 10000, totals.get("high", 0) / 10000,
+                       tier.get("level", "")),
+                   font_size=17, color=COLORS["dark"], bold=True)
+        if comparison.get("conclusion"):
+            add_textbox(slide, Inches(0.8), Inches(1.55), Inches(11.5), Inches(0.5),
+                       "预算比对：%s" % comparison["conclusion"],
+                       font_size=14, color=COLORS["accent"], bold=True)
+
+        # 分房间汇总表
+        y = Inches(2.25)
+        add_rect(slide, Inches(0.8), y, Inches(2.2), Inches(0.45), COLORS["accent"])
+        add_textbox(slide, Inches(0.8), y, Inches(2.2), Inches(0.45),
+                   "房间", font_size=14, color=COLORS["white"], align=PP_ALIGN.CENTER)
+        add_textbox(slide, Inches(3.2), y, Inches(1.8), Inches(0.45),
+                   "面积(㎡)", font_size=14, color=COLORS["dark"], align=PP_ALIGN.CENTER)
+        add_textbox(slide, Inches(5.2), y, Inches(3.2), Inches(0.45),
+                   "小计区间(元)", font_size=14, color=COLORS["dark"], align=PP_ALIGN.CENTER)
+        add_textbox(slide, Inches(8.6), y, Inches(3.6), Inches(0.45),
+                   "主要分项", font_size=14, color=COLORS["dark"])
+        y += Inches(0.5)
+        for rm in budget_data["rooms"]:
+            add_textbox(slide, Inches(0.8), y, Inches(2.2), Inches(0.4),
+                       rm.get("name", ""), font_size=14, color=COLORS["dark"], bold=True,
+                       align=PP_ALIGN.CENTER)
+            add_textbox(slide, Inches(3.2), y, Inches(1.8), Inches(0.4),
+                       "%.2f" % rm.get("area_m2", 0), font_size=13, color=COLORS["gray"],
+                       align=PP_ALIGN.CENTER)
+            add_textbox(slide, Inches(5.2), y, Inches(3.2), Inches(0.4),
+                       "%.0f ~ %.0f" % (rm.get("subtotal_low", 0), rm.get("subtotal_high", 0)),
+                       font_size=13, color=COLORS["gray"], align=PP_ALIGN.CENTER)
+            top_items = sorted(rm.get("items") or [], key=lambda i: -i.get("subtotal_high", 0))[:2]
+            add_textbox(slide, Inches(8.6), y, Inches(3.8), Inches(0.4),
+                       "、".join(i.get("item", "") for i in top_items),
+                       font_size=12, color=COLORS["gray"])
+            y += Inches(0.44)
+            if y > Inches(6.1):
+                break
+        whole = budget_data.get("whole_house_items") or []
+        if whole and y <= Inches(6.1):
+            add_textbox(slide, Inches(0.8), y, Inches(2.2), Inches(0.4),
+                       "全屋项目", font_size=14, color=COLORS["dark"], bold=True,
+                       align=PP_ALIGN.CENTER)
+            add_textbox(slide, Inches(3.2), y, Inches(1.8), Inches(0.4), "—",
+                       font_size=13, color=COLORS["gray"], align=PP_ALIGN.CENTER)
+            add_textbox(slide, Inches(5.2), y, Inches(3.2), Inches(0.4),
+                       "%.0f ~ %.0f" % (sum(i.get("subtotal_low", 0) for i in whole),
+                                        sum(i.get("subtotal_high", 0) for i in whole)),
+                       font_size=13, color=COLORS["gray"], align=PP_ALIGN.CENTER)
+            add_textbox(slide, Inches(8.6), y, Inches(3.8), Inches(0.4),
+                       "、".join(i.get("item", "") for i in whole[:3]),
+                       font_size=12, color=COLORS["gray"])
+            y += Inches(0.44)
+        add_textbox(slide, Inches(0.8), Inches(6.7), Inches(11.5), Inches(0.4),
+                   "工程量与单价依据详见 budget_estimate.json / material_list.json；区间为 AI 参考估算，非报价单",
+                   font_size=12, color=COLORS["gray"])
+
     # ── Slide 8~: 氛围图 ──
     # 找到所有氛围图
     atmos_files = sorted([f for f in os.listdir(out_dir) if "氛围图" in f and f.endswith(".png")])
@@ -272,7 +352,7 @@ def build_pptx(conditions_json_path, output_path):
 
         room_name = atmos_file.replace("氛围图.png", "")
         add_textbox(slide, Inches(0.8), Inches(0.3), Inches(6), Inches(0.6),
-                   "0%s  %s 氛围图" % (str(i + 7), room_name),
+                   "0%s  %s 氛围图" % (str(i + atmos_start), room_name),
                    font_size=24, color=COLORS["accent"], bold=True)
 
         atmos_path = os.path.join(out_dir, atmos_file)
@@ -314,6 +394,13 @@ def build_pptx(conditions_json_path, output_path):
             if text and text not in assumption_items:
                 assumption_items.append(text)
 
+    # 3.5) 预算估算 JSON 的 assumptions 数组（M5）
+    if budget_data and budget_data.get("status") == "estimate":
+        for item in budget_data.get("assumptions") or []:
+            text = str(item).strip()
+            if text and text not in assumption_items:
+                assumption_items.append(text)
+
     # 4) 面积口径说明（建筑面积 vs 房间加总）
     caliber_notes = []
     building_area = project.get("area_m2") or project.get("area")
@@ -343,11 +430,11 @@ def build_pptx(conditions_json_path, output_path):
             add_textbox(slide, Inches(0.8), y, Inches(11.5), Inches(0.5),
                        note, font_size=15, color=COLORS["dark"])
             y += Inches(0.55)
-        for item in assumption_items[:12]:
-            add_textbox(slide, Inches(0.8), y, Inches(11.5), Inches(0.5),
-                       "· " + item, font_size=15, color=COLORS["gray"])
-            y += Inches(0.5)
-            if y > Inches(6.8):
+        for item in assumption_items[:16]:
+            add_textbox(slide, Inches(0.8), y, Inches(11.5), Inches(0.45),
+                       "· " + item, font_size=13, color=COLORS["gray"])
+            y += Inches(0.42)
+            if y > Inches(6.9):
                 break
 
     # ── 最后一页: 结尾 ──

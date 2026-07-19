@@ -18,6 +18,7 @@ from modules.m2_concept_design.step7_build_pptx import build_pptx
 from core.space_profile import build_space_cognition_package
 from core.needs_profile import build_needs_cognition_package
 from core.automation_gate import build_automation_gate_package, explain_blocked_module
+from core.budget_estimate import build_budget_estimate_package
 
 
 def run_mvp_concept_package(
@@ -87,6 +88,30 @@ def run_mvp_concept_package(
     with open(os.path.join(out_dir, "布局方案.json"), "w", encoding="utf-8") as f:
         json.dump(layout, f, ensure_ascii=False, indent=2)
 
+    # M5 预算与材料清单：闸门放行 budget_estimate 时生成。
+    # 数字全部由规则引擎计算（工程量来自空间事实、单价来自价格基准表），
+    # 真实模式下 AI 只写分配/省钱建议文字，不能改动任何数字。
+    if "budget_estimate" in gate["allowed"]:
+        budget_package = build_budget_estimate_package(
+            space_package["profile"],
+            needs_package["profile"],
+            material_plan=materials,
+            layout_draft=layout if layout.get("status") == "draft" else None,
+            gate=gate,
+            output_dir=out_dir,
+        )
+        budget = budget_package["estimate"]
+    else:
+        budget = {
+            "status": "blocked_by_automation_gate",
+            "module": "budget_estimate",
+            "reasons": explain_blocked_module(gate, "budget_estimate"),
+        }
+        budget_package = {"budget_estimate": None, "material_list": None, "budget_summary_md": None}
+    with open(os.path.join(out_dir, "预算方案.json"), "w", encoding="utf-8") as f:
+        json.dump({k: v for k, v in budget.items() if k != "_material_list"},
+                  f, ensure_ascii=False, indent=2)
+
     if output_pptx_path is None:
         output_pptx_path = os.path.join(out_dir, "概念方案.pptx")
     pptx_path = build_pptx(conditions_json_path, output_pptx_path)
@@ -101,6 +126,10 @@ def run_mvp_concept_package(
         "layout_json": os.path.join(out_dir, "布局方案.json"),
         "layout_draft_json": (layout.get("artifacts") or {}).get("layout_draft"),
         "layout_draft_summary": (layout.get("artifacts") or {}).get("layout_summary_md"),
+        "budget_json": os.path.join(out_dir, "预算方案.json"),
+        "budget_estimate_json": budget_package.get("budget_estimate"),
+        "material_list_json": budget_package.get("material_list"),
+        "budget_summary_md": budget_package.get("budget_summary_md"),
         "space_profile": space_package["space_profile"],
         "cad_plan": space_package["cad_plan"],
         "scan_summary": space_package["scan_summary"],

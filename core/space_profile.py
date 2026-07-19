@@ -287,6 +287,9 @@ def _normalize_profile_rooms(rooms):
             "floor_points": room.get("floor_points") or [],
             "source": room.get("source", ""),
             "perimeter_m": _num(room.get("perimeter_m")),
+            # 层高是 M5 预算工程量（墙面/顶面面积）的事实依据；输入未给时为 0，
+            # 下游按基准表默认值估算并标注假设。
+            "ceiling_height_mm": int(_num(room.get("ceiling_height_mm")) or 0),
         })
     return [room for room in result if room.get("name")]
 

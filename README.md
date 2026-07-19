@@ -16,6 +16,7 @@
 │   ├── needs_profile.py           # 业主需求画像
 │   ├── automation_gate.py         # 约束判断 / 自动化闸门
 │   ├── layout_draft.py            # M4 布局草案（规则引擎 + AI 文字增强）
+│   ├── budget_estimate.py         # M5 预算与材料清单（规则引擎 + AI 文字建议）
 │   ├── ai_client.py               # 统一 LLM 客户端
 │   ├── cad_reader.py              # DXF 图纸读取
 │   ├── survey_parser.py           # Excel 问卷 -> 设计条件
@@ -32,6 +33,9 @@
 │   ├── roomplan_scan.template.json # LiDAR/语义扫描输入模板（scan_importer 用）
 │   ├── manual_space_data.template.json # 手动量房数据模板（含中文填写说明）
 │   └── design_conditions.sample.json   # 设计条件样例（mvp_pipeline 用）
+│
+├── resources/
+│   └── pricing_baseline.json      # M5 价格基准表（2026 参考价位档，需按当地市场校准）
 │
 ├── .env.example                   # 环境变量模板
 ├── .gitignore
@@ -96,6 +100,7 @@ AI_DEMO_MODE=1 python3 -m modules.m2_concept_design.mvp_pipeline \
 | 风格意向板 | modules/m2_concept_design/step4 | ✅ |
 | 布局建议（旧，AI 直出） | modules/m2_concept_design/step5 | ✅ |
 | 布局草案（M4，闸门放行后生成） | core/layout_draft.py + step5 | ✅ |
+| 预算与材料清单（M5，闸门放行后生成） | core/budget_estimate.py + resources/pricing_baseline.json | ✅ |
 | 概念PPT打包 | modules/m2_concept_design/step7 | ✅ |
 
 ## 环境变量
@@ -123,7 +128,8 @@ python3 scripts/compare_models.py --providers deepseek,openai
 2. M1 业主需求认知：解析家庭、生活方式、风格、预算和各空间需求，输出 `needs_profile.json`、`needs_observations.json`、`needs_questions_to_confirm.json`。
 3. M2 约束判断：基于 M0/M1 输出 `automation_gate.json`、`constraint_report.json`、`unified_questions_to_confirm.json`，判断能否进入概念、布局、预算等后续自动化。
 4. M4 布局草案：闸门放行 `layout_draft` 后，由 `core/layout_draft.py` 基于空间事实（房间尺寸、门窗位置与宽度、相邻关系）和 M1 需求档案生成逐房间的布局草案——功能分区、家具布置（名称+尺寸+靠墙关系）、动线与现场确认点位，输出 `layout_draft.json` 和 `layout_draft_summary.md`，PPT 布局页同步展示草案或拦截原因。几何决策全部由规则引擎完成（家具尺寸按房间净尺寸校验、高柜避让门扇开启范围、窗前固定家具限高），真实模式下 AI 只做文字增强，不能新增房间或修改尺寸；推断统一进 `assumptions` 并以「假设：」前缀。
-5. M3+ 概念方案、材料预算和交付打包。
+5. M5 预算与材料清单：闸门放行 `budget_estimate` 后，由 `core/budget_estimate.py` 基于空间事实（房间面积、墙面周长、门窗开口、层高）和 M3 材质方案、M4 布局家具清单生成逐房间的分项预算（硬装施工/主材/家具/软装/电器/全屋项目）与全屋主材用量清单，输出 `budget_estimate.json`、`material_list.json` 和 `budget_summary.md`，并与 M1 预算比对给出是否在预算内及主要超支项；PPT 增加预算总览页，预算假设汇入假设页。所有数字（工程量、单价、小计、总计）全部由规则引擎计算——工程量逐项注明来源（如"地面面积=房间面积 21.76㎡"），单价逐项注明基准表条目与价位档（M3 材质方案的价位档仅作参考标注）；价格基准独立在 `resources/pricing_baseline.json`（2026 年参考价位档，须按当地市场校准）；真实模式下 AI 只写预算分配/省钱建议文字，运行时用 numeric_view 校验数字零改动；推断统一进 `assumptions` 并以「假设：」前缀，不编造任何品牌型号。
+6. M3+ 概念方案深化和交付打包。
 
 当前流水线会先经过 M2。如果空间和需求足够，会继续生成概念提案；如果资料不足以自动布局，会生成带原因的 `布局方案.json` 拦截结果，而不是伪造布局草案。
 
