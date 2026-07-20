@@ -19,6 +19,7 @@ from core.space_profile import build_space_cognition_package
 from core.needs_profile import build_needs_cognition_package
 from core.automation_gate import build_automation_gate_package, explain_blocked_module
 from core.budget_estimate import build_budget_estimate_package
+from core.delivery_package import build_delivery_package
 
 
 def run_mvp_concept_package(
@@ -27,6 +28,8 @@ def run_mvp_concept_package(
     scan_summary=None,
     cad_plan=None,
     cad_dxf_path=None,
+    delivery_root=None,
+    delivery_package_name=None,
 ):
     base_dir = os.path.dirname(os.path.abspath(conditions_json_path))
     out_dir = os.path.join(base_dir, "concept_output")
@@ -116,6 +119,17 @@ def run_mvp_concept_package(
         output_pptx_path = os.path.join(out_dir, "概念方案.pptx")
     pptx_path = build_pptx(conditions_json_path, output_pptx_path)
 
+    # M6 交付打包：把 M0–M5 分散产物一次性打包成可追溯的交付包。
+    # 被闸门拦截的模块不伪造文件，只在 manifest / 交付说明中标注原因。
+    delivery = build_delivery_package(
+        out_dir,
+        gate=gate,
+        pptx_path=pptx_path,
+        delivery_root=delivery_root,
+        project_name=(conditions.get("project") or {}).get("name"),
+        package_name=delivery_package_name,
+    )
+
     return {
         "output_dir": out_dir,
         "pptx": pptx_path,
@@ -143,6 +157,7 @@ def run_mvp_concept_package(
         "unified_questions_to_confirm": gate_package["unified_questions_to_confirm"],
         "allowed_modules": gate["allowed"],
         "blocked_modules": gate["blocked"],
+        "delivery": delivery,
         "demo_mode": bool(palette.get("demo") or materials.get("demo") or layout.get("demo")),
     }
 

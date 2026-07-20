@@ -26,6 +26,7 @@ config.py
 
 # Generated output
 **/concept_output/
+**/delivery/
 **/real_output/
 output/
 
