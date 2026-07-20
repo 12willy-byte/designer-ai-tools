@@ -99,6 +99,7 @@ AI_DEMO_MODE=1 python3 -m modules.m2_concept_design.mvp_pipeline \
 | 业主需求认知 | core/needs_profile.py | ✅ |
 | 约束判断 / 自动化闸门 | core/automation_gate.py | ✅ |
 | CAD/DXF 读取并接入空间画像 | core/cad_reader.py | ✅ |
+| 矢量 PDF 图纸解析（比例尺校准+房间闭环） | core/pdf_plan_reader.py | ✅ |
 | 设计定位文案 | modules/m2_concept_design/step1 | ✅ |
 | 色彩方案建议 | modules/m2_concept_design/step2 | ✅ |
 | 材质方案 | modules/m2_concept_design/step3 | ✅ |
@@ -140,3 +141,14 @@ python3 scripts/compare_models.py --providers deepseek,openai
 当前流水线会先经过 M2。如果空间和需求足够，会继续生成概念提案；如果资料不足以自动布局，会生成带原因的 `布局方案.json` 拦截结果，而不是伪造布局草案。
 
 CAD/DXF 可通过 `run_mvp_concept_package(..., cad_dxf_path="原始平面图.dxf")` 接入。系统会读取墙线、门窗、文字标注和疑似房间闭环，并把结果写入 M0 空间画像；但承重、上下水、烟道和电气约束仍需要原始图纸或人工确认。
+
+### 三大空间输入路径
+
+优先级：CAD/DXF 毛坯图（主路径）→ RoomPlan 语义扫描 → 矢量 PDF 图纸。
+
+1. **CAD/DXF**：`cad_dxf_path=` 接入，图层语义最完整（墙/门/窗分层），置信度最高。
+2. **RoomPlan 语义扫描**：`scan_summary=` 传入 `core/scan_importer.py` 的摘要结果（语义 JSON 或网格文件，带置信度）。
+3. **矢量 PDF**：`pdf_path=`（可选 `pdf_scale="1:50"`）接入 `core/pdf_plan_reader.py`，解析结果与 cad_plan 同构、走同一融合通道。只支持**矢量型** PDF（CAD 打印/导出的线条图）；扫描/拍照的图片型 PDF 会被明确拒绝并建议转 CAD/DXF 或 RoomPlan，不硬解析、不伪造。
+   - 比例尺校准优先级：显式 `pdf_scale` 参数（"1:50" 或 "A3" 图幅反推）→ 图纸比例文字（"比例 1:50"）→ 尺寸标注数字反推（数字文本 ↔ 最近长线段聚类投票）→ 全部失败时只输出几何拓扑、`dimensions_calibrated=false`、置信度压低，闸门相应拦截 layout_draft，不盲目放行。
+   - 识别内容：墙线（横竖长线段）、门洞/窗洞（墙线缺口+门扇/窗符号启发式）、房间闭环（有向半边面遍历）、房间名文字关联。PDF 无图层语义，门窗识别为启发式，限制如实写入 `limitations`。
+   - 测试样本：`scripts/generate_sample_pdf_plan.py` 生成两室一厅矢量 PDF（`templates/sample_floor_plan_vector.pdf`）；验收：`AI_DEMO_MODE=1 python3 scripts/validate_pdf_plan.py`。

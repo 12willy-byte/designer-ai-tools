@@ -311,7 +311,9 @@ def _merge_rooms(base_rooms, evidence_rooms):
 
 def _merge_cad_geometry(geometry, cad_plan):
     merged = dict(geometry)
-    merged["source_type"] = "cad"
+    # 矢量 PDF 解析结果与 cad_plan 同构，走同一融合通道；
+    # source_type 由解析方标注（cad_reader 不标注，默认 cad）。
+    merged["source_type"] = cad_plan.get("source_type") or "cad"
     detected_rooms = _cad_rooms_to_profile_rooms(cad_plan)
     if detected_rooms:
         merged["rooms"] = _merge_rooms(
@@ -322,6 +324,12 @@ def _merge_cad_geometry(geometry, cad_plan):
     if cad_plan.get("doors") and cad_plan.get("windows"):
         base_confidence = max(base_confidence, 0.72)
     merged["confidence"] = max(_num(merged.get("confidence")), base_confidence)
+    # 解析方自带置信度（如 PDF 比例尺未校准时 0.25）时向下封顶，
+    # 避免低置信几何被闸门当作高置信事实放行。
+    if cad_plan.get("confidence") is not None:
+        merged["confidence"] = min(merged["confidence"], _num(cad_plan.get("confidence")))
+    for limitation in cad_plan.get("limitations") or []:
+        merged["notes"] = list(merged.get("notes") or []) + [limitation]
     bounds = cad_plan.get("bounds")
     if bounds:
         merged["bounds_mm"] = {
@@ -362,7 +370,7 @@ def _cad_rooms_to_profile_rooms(cad_plan):
             "length_mm": int(length or 0),
             "floor_points": points,
             "perimeter_m": _num(room.get("perimeter_m")),
-            "source": "cad_dxf",
+            "source": cad_plan.get("source_type") or "cad_dxf",
         })
     return rooms
 

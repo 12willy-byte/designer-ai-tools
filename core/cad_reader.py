@@ -177,7 +177,7 @@ def merge_collinear_walls(walls: list, tolerance_mm: float = 10) -> list:
     return merged
 
 
-def detect_rooms_from_walls(walls: list, texts: list = None, max_dimension_mm: float = 50000) -> list:
+def detect_rooms_from_walls(walls: list, texts: list = None, max_dimension_mm: float = 50000, merge: bool = True) -> list:
     """
     从墙线检测房间闭环。
     使用图论: 建邻接图 → DFS 找最小环 → 过滤房间大小
@@ -185,6 +185,9 @@ def detect_rooms_from_walls(walls: list, texts: list = None, max_dimension_mm: f
     Args:
         walls: [(x1,y1,x2,y2,thickness), ...]
         texts: [{"text":..., "x":..., "y":...}, ...]
+        merge: 是否先合并共线墙段。PDF 解析器等调用方若已自行完成
+               间隙桥接与 T 型交叉分割，应传 merge=False，否则合并会
+               抹掉 T 型节点、破坏内部房间闭环。
 
     Returns:
         [{"name": str, "floor_points": [(x,y),...], "area_m2": float}, ...]
@@ -194,8 +197,8 @@ def detect_rooms_from_walls(walls: list, texts: list = None, max_dimension_mm: f
 
     texts = texts or []
 
-    # 合并共线墙段
-    merged = merge_collinear_walls(walls)
+    # 合并共线墙段（调用方已预处理几何时可跳过）
+    merged = merge_collinear_walls(walls) if merge else list(walls)
 
     # 建端点邻接图
     SNAP = 50  # mm 容差
@@ -274,6 +277,87 @@ def detect_rooms_from_walls(walls: list, texts: list = None, max_dimension_mm: f
     # 按面积排序
     rooms.sort(key=lambda r: r["area_m2"], reverse=True)
     return rooms
+
+
+def detect_room_faces_from_walls(walls: list, texts: list = None, snap: float = 50,
+                                 min_area_m2: float = 0.5, max_area_m2: float = 500) -> list:
+    """
+    用有向半边面遍历（planar face traversal）提取房间面。
+    相比 detect_rooms_from_walls 的"每个起点找一个环"，面遍历能把
+    多房间平面图的正确分割面全部取出（旧方法在T型分割多的图上
+    容易返回相邻房间的并集环）。
+
+    规则: 沿每条有向边走，到节点后排除来路边（死胡同除外），取
+    "来路反向"顺时针顺序的下一条边，使行进方向左侧始终为同一个面。
+    有界面逆时针（面积为正），外轮廓面顺时针（面积为负）被过滤。
+
+    Args:
+        walls: [(x1,y1,x2,y2,thickness), ...]，调用方需先完成间隙桥接
+               与 T 型交叉分割
+        texts: [{"text":..., "x":..., "y":...}, ...]
+
+    Returns:
+        [{"name": str, "floor_points": [...], "area_m2": float, "perimeter_m": float}, ...]
+    """
+    texts = texts or []
+    graph = defaultdict(set)
+
+    def snap_pt(x, y):
+        return (round(x / snap) * snap, round(y / snap) * snap)
+
+    for x1, y1, x2, y2, _t in walls:
+        s1, s2 = snap_pt(x1, y1), snap_pt(x2, y2)
+        if s1 == s2:
+            continue
+        graph[s1].add(s2)
+        graph[s2].add(s1)
+    if len(graph) < 3:
+        return []
+    graph = {node: sorted(neighbors) for node, neighbors in graph.items()}
+
+    visited = set()
+    faces = []
+    for u in graph:
+        for v in graph[u]:
+            if (u, v) in visited:
+                continue
+            face = []
+            curr_u, curr_v = u, v
+            while (curr_u, curr_v) not in visited and len(face) <= 200:
+                visited.add((curr_u, curr_v))
+                face.append(curr_u)
+                theta_back = math.atan2(curr_u[1] - curr_v[1], curr_u[0] - curr_v[0])
+                neighbors = graph[curr_v]
+                candidates = [w for w in neighbors if w != curr_u] or list(neighbors)
+                best, best_delta = None, None
+                for w in candidates:
+                    theta_out = math.atan2(w[1] - curr_v[1], w[0] - curr_v[0])
+                    delta = (theta_back - theta_out) % (2 * math.pi)
+                    if best_delta is None or delta < best_delta:
+                        best, best_delta = w, delta
+                curr_u, curr_v = curr_v, best
+            if len(face) < 3:
+                continue
+            n = len(face)
+            area = 0
+            for i in range(n):
+                x1, y1 = face[i]
+                x2, y2 = face[(i + 1) % n]
+                area += x1 * y2 - x2 * y1
+            area_m2 = area / 2e6  # 有界面为逆时针（正）；外轮廓面为负，被过滤
+            if min_area_m2 < area_m2 < max_area_m2:
+                faces.append({
+                    "name": _find_room_name(face, texts),
+                    "floor_points": [{"x": p[0], "y": p[1]} for p in face],
+                    "area_m2": round(area_m2, 2),
+                    "perimeter_m": round(sum(
+                        math.hypot(face[i][0] - face[(i + 1) % n][0],
+                                   face[i][1] - face[(i + 1) % n][1])
+                        for i in range(n)) / 1000, 2),
+                })
+
+    faces.sort(key=lambda r: r["area_m2"], reverse=True)
+    return faces
 
 
 def _find_room_name(points, texts):

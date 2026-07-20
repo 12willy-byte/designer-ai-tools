@@ -28,6 +28,8 @@ def run_mvp_concept_package(
     scan_summary=None,
     cad_plan=None,
     cad_dxf_path=None,
+    pdf_path=None,
+    pdf_scale=None,
     delivery_root=None,
     delivery_package_name=None,
 ):
@@ -40,10 +42,21 @@ def run_mvp_concept_package(
     if cad_dxf_path and cad_plan is None:
         from core.cad_reader import read_dxf_with_rooms
         cad_plan = read_dxf_with_rooms(cad_dxf_path)
+    if pdf_path:
+        # 矢量 PDF 与 cad_plan 同构，走同一融合通道；CAD/DXF 优先。
+        from core.pdf_plan_reader import read_pdf_plan
+        pdf_plan = read_pdf_plan(pdf_path, scale=pdf_scale)
+        if not pdf_plan.get("accepted"):
+            raise ValueError("PDF 图纸无法作为空间输入：" +
+                             "；".join(pdf_plan.get("limitations") or ["未知原因"]))
+        if cad_plan is None:
+            cad_plan = pdf_plan
 
     source_files = {}
     if cad_dxf_path:
         source_files["cad"] = cad_dxf_path
+    if pdf_path:
+        source_files["pdf"] = pdf_path
     space_package = build_space_cognition_package(
         conditions,
         out_dir,
@@ -164,11 +177,12 @@ def run_mvp_concept_package(
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python -m modules.m2_concept_design.mvp_pipeline <design_conditions.json> [output.pptx] [cad.dxf]")
+        print("Usage: python -m modules.m2_concept_design.mvp_pipeline <design_conditions.json> [output.pptx] [cad.dxf] [plan.pdf]")
         raise SystemExit(2)
     result = run_mvp_concept_package(
         sys.argv[1],
         sys.argv[2] if len(sys.argv) > 2 else None,
         cad_dxf_path=sys.argv[3] if len(sys.argv) > 3 else None,
+        pdf_path=sys.argv[4] if len(sys.argv) > 4 else None,
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))
