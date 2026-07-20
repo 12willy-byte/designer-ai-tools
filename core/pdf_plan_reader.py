@@ -29,7 +29,9 @@ MM_PER_PT = 25.4 / 72.0  # 纸面上 1pt = 0.3528mm
 
 # 校准阈值（单位 mm）；未校准时坐标仍是 pt，使用 _UNCAL 阈值
 _MIN_WALL_MM = 500.0
-_GAP_RANGE_MM = (500.0, 2600.0)   # 门窗洞口宽度合理区间
+_GAP_RANGE_MM = (500.0, 2600.0)       # 门洞级洞口宽度合理区间
+_BALCONY_GAP_MM = (2600.0, 4000.0)    # 阳台/落地窗级大洞口：桥接但标记为虚拟墙
+_OVERSIZED_GAP_MM = 8000.0            # 超过 4000mm 的开口不桥接，只记录 limitation
 _SNAP_MM = 50.0
 _MIN_WALL_UNCAL = 40.0            # ≈11mm 纸面长度
 _GAP_RANGE_UNCAL = (25.0, 150.0)
@@ -165,7 +167,17 @@ def read_pdf_plan(pdf_path, scale=None, page_number=0):
     def _analyze(segs_mm):
         result = _classify_geometry(segs_mm, calibrated, min_wall, gap_range, snap)
         wall_list = result["walls"]
-        room_list = detect_room_faces_from_walls(wall_list, texts, snap=snap)
+        # 面遍历前做图面清理：节点焊接（40~100mm 的错位节点/双线残余并点）、
+        # 重边剔除、悬挂墙头剪枝。真实图纸的微几何噪声（窄缝、2-节点环、
+        # 微三角、错位 T 节点）会让面遍历振荡或走进死胡同，产生不闭合/
+        # 自交的退化"房间"。清理只用于闭环检测，对外墙线输出不变。
+        face_walls = _weld_and_prune_for_faces(wall_list, snap)
+        room_list = detect_room_faces_from_walls(face_walls, texts, snap=snap)
+        room_list, invalid_count = _clean_and_validate_faces(room_list, face_walls, snap)
+        if invalid_count:
+            result["notes"].append(
+                f"{invalid_count} 个退化闭环（边界不连贯或自交，多为墙缝/符号描边）"
+                "已从房间清单剔除。")
         room_list, outline_face = _separate_outline(room_list)
         return result, wall_list, room_list, outline_face
 
@@ -220,6 +232,36 @@ def read_pdf_plan(pdf_path, scale=None, page_number=0):
                 "已从房间清单剔除。")
         rooms = kept
 
+    # 开敞空间命名：按房间名文字的实际落点重命名；一个闭环内有多个房间名
+    # （客餐厅一体等）标注为复合空间并给出逻辑分区，不伪造物理隔墙。
+    composite_count = _relabel_rooms_by_inner_texts(rooms, texts)
+    if composite_count:
+        base["limitations"].append(
+            f"{composite_count} 个开敞复合空间（一个闭环内含多个房间名，如客餐厅一体）："
+            "按文字落点标注为复合空间并给出逻辑分区（zones），未伪造物理隔墙。")
+
+    # 命名诚实化（PDF 路径）：
+    # 1) 环内无房间名文字、且最近的房间名文字在 2500mm 以外的闭环，
+    #    改名为"未命名空间"——最近文字命名在远处会张冠李戴（如把阳台条带
+    #    命名为隔壁卧室）；
+    # 2) 同名闭环按面积降序编号（卧室、卧室2……）：下游空间画像按名字
+    #    合并同名房间，不编号会丢掉同名但独立的闭环（如两个卧室）。
+    renamed = _disambiguate_room_names(rooms, texts)
+    if renamed:
+        base["limitations"].append(
+            f"{renamed} 个闭环没有落在其内部的房间名文字且最近文字超过 2500mm，"
+            "已命名为“未命名空间”而非沿用远处文字，需人工复核命名。")
+
+    # 虚拟桥接边界标记：含大洞口推断墙的房间降置信，供下游闸门区分。
+    virtual_segments = result.get("virtual_segments") or []
+    virtual_rooms = _mark_virtual_boundaries(rooms, virtual_segments, snap)
+    if virtual_rooms:
+        base["limitations"].append(
+            f"以下房间的边界含虚拟桥接段（阳台/落地窗级大洞口的推断开口面）："
+            f"{'、'.join(virtual_rooms)}。这些边界不是实墙证据，需人工复核。")
+    base["virtual_walls"] = [(round(x1, 1), round(y1, 1), round(x2, 1), round(y2, 1))
+                             for x1, y1, x2, y2 in virtual_segments]
+
     base["walls"] = [(round(x1, 1), round(y1, 1), round(x2, 1), round(y2, 1), t)
                      for x1, y1, x2, y2, t in walls]
     base["total_lines"] = len(base["walls"]) + len(base["doors"]) + len(base["windows"])
@@ -237,7 +279,9 @@ def read_pdf_plan(pdf_path, scale=None, page_number=0):
     base["outline"] = outline
 
     # ---------- 置信度与限制 ----------
-    base["confidence"] = _overall_confidence(calibrated, rooms, base["doors"], base["windows"])
+    base["confidence"] = _overall_confidence(
+        calibrated, rooms, base["doors"], base["windows"],
+        has_virtual=bool(virtual_rooms))
     if not calibrated:
         base["limitations"].append(
             "比例尺未能校准：坐标单位仍是 point 而非毫米，房间面积/尺寸不可信，"
@@ -587,9 +631,15 @@ def _classify_geometry(segs, calibrated, min_wall, gap_range, snap):
 
     # 共线分组 → 找洞口间隙。纯单线簇（无墙中线）的洞口可能是家具缺口，
     # 必须有门扇斜线或窗符号佐证才采信；含墙中线的簇直接采信。
+    # 洞口分级桥接（真实图纸的阳台推拉门/落地窗常超过门洞上限）：
+    # - 门洞级（gap_range 内，≤2600mm）：正常桥接；
+    # - 阳台/落地窗级（2600~4000mm，且簇内有墙中线佐证是真墙）：桥接但
+    #   标记 virtual——这面墙是推断的开口面，下游按低置信度处理；
+    # - 超大开口（>4000mm）：不桥接（露台/天井/开敞区），如实记录 limitation。
     centerline_ids = {id(c) for c in centerlines}
     clusters = _cluster_collinear(gap_source, snap)
     openings = []
+    oversized_gaps = []
     for cluster in clusters:
         direction = cluster[0][0]
         line_coord = sum(s[1] for s in cluster) / len(cluster)
@@ -605,10 +655,25 @@ def _classify_geometry(segs, calibrated, min_wall, gap_range, snap):
                     "gap_end": a2,
                     "width": gap,
                     "needs_proof": not has_center,
+                    "virtual": False,
                 })
+            elif calibrated and has_center and _BALCONY_GAP_MM[0] < gap <= _BALCONY_GAP_MM[1]:
+                openings.append({
+                    "axis": direction,
+                    "line": line_coord,
+                    "gap_start": b1,
+                    "gap_end": a2,
+                    "width": gap,
+                    "needs_proof": False,
+                    "virtual": True,
+                })
+            elif calibrated and has_center and _BALCONY_GAP_MM[1] < gap <= _OVERSIZED_GAP_MM:
+                oversized_gaps.append(gap)
 
     doors = []
     windows = []
+    virtual_count = 0
+    virtual_segments = []
     consumed_diagonals = set()
     for opening in openings:
         if opening["axis"] == "H":
@@ -655,9 +720,15 @@ def _classify_geometry(segs, calibrated, min_wall, gap_range, snap):
             for s in symbol_segs:
                 s[8] = True  # 标记为窗符号，不再作为墙线
             windows.append((round(p1[0], 1), round(p1[1], 1), round(p2[0], 1), round(p2[1], 1)))
+        elif opening.get("virtual"):
+            # 阳台/落地窗级大洞口：按窗处理（采光面），桥接段标记为虚拟墙
+            windows.append((round(p1[0], 1), round(p1[1], 1), round(p2[0], 1), round(p2[1], 1)))
         else:
             doors.append((round(p1[0], 1), round(p1[1], 1), round(p2[0], 1), round(p2[1], 1)))
             notes.append("外墙存在无窗符号的洞口，按门洞处理（可能是入户门/阳台门），需人工确认。")
+        if opening.get("virtual"):
+            virtual_count += 1
+            virtual_segments.append((p1[0], p1[1], p2[0], p2[1]))
 
     # 墙线输出 + 洞口桥接段（供闭环检测把房间封合）
     walls = []
@@ -707,11 +778,21 @@ def _classify_geometry(segs, calibrated, min_wall, gap_range, snap):
     unclassified = len(diagonal_segs) - len(consumed_diagonals)
     if unclassified > 0:
         notes.append(f"{unclassified} 条斜线/符号线段无法归类，已忽略。")
+    if virtual_count:
+        notes.append(
+            f"{virtual_count} 个阳台/落地窗级大洞口（2600–4000mm，有墙线佐证）已桥接为"
+            "虚拟墙：该边界是推断的开口面而非实墙，相关房间标记 virtual_boundary=True，"
+            "整体置信度相应下调，需人工复核。")
+    if oversized_gaps:
+        notes.append(
+            f"{len(oversized_gaps)} 个超过 4000mm 的超大开口（最大 {round(max(oversized_gaps))}mm）"
+            "未桥接：可能是露台/天井/开敞区，其内侧空间无法闭环，未计入房间。")
 
     return {
         "walls": walls,
         "doors": doors,
         "windows": windows,
+        "virtual_segments": virtual_segments,
         "unclassified_count": max(0, unclassified),
         "notes": notes,
     }
@@ -939,6 +1020,167 @@ def _split_at_t_junctions(walls, snap):
     return [tuple(w) for w in walls]
 
 
+def _weld_and_prune_for_faces(walls, snap):
+    """图面清理（仅用于面遍历，不改变对外输出的墙线）。
+
+    1. 端点量化到 snap 网格；
+    2. 节点焊接：union-find 合并间距 ≤1 格的节点（40~100mm 的双线残余、
+       错位 T 节点并为一个连接点）；
+    3. 重建墙段 → 去自环、去重边 → T 型节点重切（端点落回线上）；
+    4. 迭代剪掉悬挂墙头（死胡同）——焊接后节点连通可靠，剪枝安全：
+       面遍历不再走进死胡同折返，也就不会产生不闭合的退化面。
+    """
+    # 1) 量化端点
+    edges = []
+    node_set = set()
+    for x1, y1, x2, y2, _t in walls:
+        p1 = (round(x1 / snap) * snap, round(y1 / snap) * snap)
+        p2 = (round(x2 / snap) * snap, round(y2 / snap) * snap)
+        if p1 == p2:
+            continue
+        edges.append((p1, p2))
+        node_set.add(p1)
+        node_set.add(p2)
+    nodes = sorted(node_set)
+
+    # 2) 焊接 ≤1 格（Chebyshev）的节点
+    parent = {p: p for p in nodes}
+
+    def find(p):
+        while parent[p] != p:
+            parent[p] = parent[parent[p]]
+            p = parent[p]
+        return p
+
+    def union(a, b):
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            parent[max(ra, rb)] = min(ra, rb)
+
+    for i, a in enumerate(nodes):
+        for b in nodes[i + 1:]:
+            if b[0] - a[0] > snap:
+                break  # 排序后剪枝（仅按 x 有序，够用）
+            if abs(a[1] - b[1]) <= snap:
+                union(a, b)
+    clusters = {}
+    for p in nodes:
+        clusters.setdefault(find(p), []).append(p)
+    rep = {}
+    for root, members in clusters.items():
+        mx = sum(p[0] for p in members) / len(members)
+        my = sum(p[1] for p in members) / len(members)
+        r = (round(mx / snap) * snap, round(my / snap) * snap)
+        for p in members:
+            rep[p] = r
+
+    # 3) 重建 + 去自环/重边 + T 型重切（两轮，让切出的新节点再归并）
+    wall_list = []
+    for a, b in edges:
+        ra, rb = rep[a], rep[b]
+        if ra != rb:
+            wall_list.append((ra[0], ra[1], rb[0], rb[1], 120))
+    for _ in range(2):
+        seen = set()
+        unique = []
+        for x1, y1, x2, y2, t in wall_list:
+            p1 = (round(x1 / snap) * snap, round(y1 / snap) * snap)
+            p2 = (round(x2 / snap) * snap, round(y2 / snap) * snap)
+            if p1 == p2:
+                continue
+            key = (min(p1, p2), max(p1, p2))
+            if key in seen:
+                continue
+            seen.add(key)
+            unique.append((p1[0], p1[1], p2[0], p2[1], t))
+        wall_list = _split_at_t_junctions(unique, snap)
+
+    # 4) 迭代剪悬挂边（死胡同墙头）
+    graph_edges = []
+    for x1, y1, x2, y2, _t in wall_list:
+        p1 = (round(x1 / snap) * snap, round(y1 / snap) * snap)
+        p2 = (round(x2 / snap) * snap, round(y2 / snap) * snap)
+        if p1 != p2:
+            graph_edges.append((min(p1, p2), max(p1, p2)))
+    graph_edges = list(set(graph_edges))
+    while True:
+        degree = {}
+        for a, b in graph_edges:
+            degree[a] = degree.get(a, 0) + 1
+            degree[b] = degree.get(b, 0) + 1
+        kept = [(a, b) for a, b in graph_edges if degree[a] > 1 and degree[b] > 1]
+        if len(kept) == len(graph_edges):
+            break
+        graph_edges = kept
+    return [(a[0], a[1], b[0], b[1], 120) for a, b in graph_edges]
+
+
+def _clean_and_validate_faces(rooms, walls, snap):
+    """清理并校验面遍历结果，返回 (有效房间列表, 剔除数量)。
+
+    真实 CAD 图纸的墙图含有大量悬挂墙头（门套线、台面线、符号残段），
+    面遍历会走进死胡同再原路折返，多边形出现重复顶点。分两类处理：
+    1. 墙头折返（A→B→A 式来回）：从顶点序列中剥除，得到真实边界环，
+       并重算面积/周长——真实房间保留；
+    2. 清理后仍有重复顶点（8 字自交）或闭合边在墙图中不存在的：
+       退化闭环（墙缝、走廊描边），剔除。
+    """
+    edge_set = set()
+    for x1, y1, x2, y2, _t in walls:
+        p1 = (round(x1 / snap) * snap, round(y1 / snap) * snap)
+        p2 = (round(x2 / snap) * snap, round(y2 / snap) * snap)
+        if p1 != p2:
+            edge_set.add((min(p1, p2), max(p1, p2)))
+    kept = []
+    dropped = 0
+    for room in rooms:
+        pts = [(p["x"], p["y"]) for p in room.get("floor_points") or []]
+        if len(pts) < 3:
+            dropped += 1
+            continue
+        # 剥除墙头折返：当前顶点的下一步若回到上上个顶点，说明上一段是
+        # 死胡同往返，弹掉它（含首尾闭合边的折返）。
+        stack = []
+        for p in pts + [pts[0]]:
+            if len(stack) >= 2 and stack[-2] == p:
+                stack.pop()
+            else:
+                stack.append(p)
+        if len(stack) >= 2 and stack[0] == stack[-1]:
+            stack.pop()  # 去掉闭合重复点
+        if len(stack) < 3 or len(set(stack)) != len(stack):
+            dropped += 1  # 清理后仍有重复顶点（自交）或不足以成环
+            continue
+        ok = True
+        for i in range(len(stack)):
+            a, b = stack[i], stack[(i + 1) % len(stack)]
+            if (min(a, b), max(a, b)) not in edge_set:
+                ok = False
+                break
+        if not ok:
+            dropped += 1
+            continue
+        if len(stack) != len(pts):
+            # 边界有变化：重算面积与周长
+            area = 0.0
+            perimeter = 0.0
+            for i in range(len(stack)):
+                x1, y1 = stack[i]
+                x2, y2 = stack[(i + 1) % len(stack)]
+                area += x1 * y2 - x2 * y1
+                perimeter += math.hypot(x2 - x1, y2 - y1)
+            area_m2 = area / 2e6
+            if not (0.5 < area_m2 < 500):
+                dropped += 1
+                continue
+            room = dict(room)
+            room["floor_points"] = [{"x": p[0], "y": p[1]} for p in stack]
+            room["area_m2"] = round(area_m2, 2)
+            room["perimeter_m"] = round(perimeter / 1000, 2)
+        kept.append(room)
+    return kept, dropped
+
+
 def _separate_outline(rooms):
     """把包含其他房间质心的最大环判为户型外轮廓，不当作房间。"""
     if len(rooms) < 2:
@@ -980,7 +1222,113 @@ def _point_in_polygon(px, py, poly):
     return inside
 
 
-def _overall_confidence(calibrated, rooms, doors, windows):
+_PDF_ROOM_KEYWORDS = ("客厅", "餐厅", "卧室", "厨房", "卫生间", "书房", "阳台",
+                      "玄关", "储物", "衣帽", "走廊", "主卧", "次卧", "马桶", "卫")
+
+
+def _relabel_rooms_by_inner_texts(rooms, texts):
+    """按房间名文字的实际落点重命名/逻辑分区（PDF 路径专用）。
+
+    cad_reader 的命名取"最近文字"，开敞空间里大闭环会偷走隔壁房间的名字。
+    这里改为包含判断：
+    - 环内有且仅有一个房间名 → 用它命名；
+    - 环内有多个房间名（客餐厅一体、开放式厨房等开敞布局）→ 标注为复合空间
+      （如 "客厅+餐厅"），文字位置写入 zones 作为逻辑分区，不伪造物理隔墙；
+    - 环内没有房间名 → 保留最近文字命名结果不变。
+    """
+    name_texts = [t for t in texts
+                  if any(k in (t.get("text") or "") for k in _PDF_ROOM_KEYWORDS)]
+    composite_count = 0
+    for room in rooms:
+        poly = [(p["x"], p["y"]) for p in room.get("floor_points") or []]
+        if len(poly) < 3:
+            continue
+        inside = []
+        for t in name_texts:
+            if _point_in_polygon(t["x"], t["y"], poly):
+                if t["text"] not in [i["text"] for i in inside]:
+                    inside.append(t)
+        if len(inside) >= 2:
+            room["name"] = "+".join(t["text"] for t in inside)
+            room["composite"] = True
+            room["zones"] = [{"name": t["text"], "x": round(t["x"], 1),
+                              "y": round(t["y"], 1)} for t in inside]
+            composite_count += 1
+        elif len(inside) == 1:
+            room["name"] = inside[0]["text"]
+    return composite_count
+
+
+def _disambiguate_room_names(rooms, texts, far_threshold=2500.0):
+    """同名编号 + 远距离命名诚实化。返回被改为"未命名空间"的数量。"""
+    name_texts = [t for t in texts
+                  if any(k in (t.get("text") or "") for k in _PDF_ROOM_KEYWORDS)]
+    unnamed = 0
+    for room in rooms:
+        poly = [(p["x"], p["y"]) for p in room.get("floor_points") or []]
+        if len(poly) < 3 or not name_texts:
+            continue
+        has_inner = any(_point_in_polygon(t["x"], t["y"], poly) for t in name_texts)
+        if has_inner:
+            continue
+        cx = sum(p[0] for p in poly) / len(poly)
+        cy = sum(p[1] for p in poly) / len(poly)
+        nearest = min(math.hypot(t["x"] - cx, t["y"] - cy) for t in name_texts)
+        if nearest > far_threshold:
+            room["name"] = "未命名空间"
+            unnamed += 1
+    # 同名闭环按面积降序编号（rooms 已是面积降序）
+    counts = {}
+    for room in rooms:
+        name = room.get("name") or ""
+        counts[name] = counts.get(name, 0) + 1
+    seen = {}
+    for room in rooms:
+        name = room.get("name") or ""
+        if counts.get(name, 0) > 1:
+            seen[name] = seen.get(name, 0) + 1
+            if seen[name] > 1:
+                room["name"] = f"{name}{seen[name]}"
+    return unnamed
+
+
+def _mark_virtual_boundaries(rooms, virtual_segments, snap):
+    """标记边界含虚拟桥接段（大洞口推断墙）的房间，返回受影响的房间名。
+
+    房间面来自桥接后的墙图，逐边检查是否与虚拟段共线且有实质重合。
+    """
+    if not virtual_segments:
+        return []
+    marked = []
+    for room in rooms:
+        pts = [(p["x"], p["y"]) for p in room.get("floor_points") or []]
+        hit = False
+        for i in range(len(pts)):
+            if hit:
+                break
+            ax, ay = pts[i]
+            bx, by = pts[(i + 1) % len(pts)]
+            for x1, y1, x2, y2 in virtual_segments:
+                if abs(ay - by) <= snap and abs(y1 - y2) <= snap:
+                    if abs((ay + by) / 2 - (y1 + y2) / 2) > snap:
+                        continue
+                    overlap = min(max(ax, bx), max(x1, x2)) - max(min(ax, bx), min(x1, x2))
+                elif abs(ax - bx) <= snap and abs(x1 - x2) <= snap:
+                    if abs((ax + bx) / 2 - (x1 + x2) / 2) > snap:
+                        continue
+                    overlap = min(max(ay, by), max(y1, y2)) - max(min(ay, by), min(y1, y2))
+                else:
+                    continue
+                if overlap >= max(300.0, snap * 2):
+                    hit = True
+                    break
+        if hit:
+            room["virtual_boundary"] = True
+            marked.append(room.get("name") or "未命名")
+    return marked
+
+
+def _overall_confidence(calibrated, rooms, doors, windows, has_virtual=False):
     if not calibrated:
         return 0.25
     if not rooms:
@@ -990,4 +1338,7 @@ def _overall_confidence(calibrated, rooms, doors, windows):
         conf = 0.7
     if doors and windows:
         conf = 0.72
+    if has_virtual:
+        # 含虚拟桥接边界（推断的开口面）：诚实下调一档
+        conf = max(0.5, conf - 0.05)
     return conf
