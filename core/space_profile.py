@@ -363,15 +363,23 @@ def _cad_rooms_to_profile_rooms(cad_plan):
         ys = [_num(p.get("y")) for p in points if isinstance(p, dict)]
         width = max(xs) - min(xs) if xs else 0
         length = max(ys) - min(ys) if ys else 0
-        rooms.append({
+        item = {
             "name": room.get("name") or f"CAD识别空间{idx + 1}",
             "area_m2": _num(room.get("area_m2")),
             "width_mm": int(width or 0),
             "length_mm": int(length or 0),
             "floor_points": points,
             "perimeter_m": _num(room.get("perimeter_m")),
-            "source": cad_plan.get("source_type") or "cad_dxf",
-        })
+            # 双图融合的房间自带来源标记（structure/merged/plan_only），
+            # 优先沿用；单图路径行为不变。
+            "source": room.get("source") or cad_plan.get("source_type") or "cad_dxf",
+        }
+        # 融合房间自带置信度（双源一致升档/plan_only 降档）时透传给下游。
+        if room.get("confidence") is not None:
+            item["confidence"] = _num(room.get("confidence"))
+        if room.get("needs_site_verification"):
+            item["needs_site_verification"] = True
+        rooms.append(item)
     return rooms
 
 

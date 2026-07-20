@@ -30,6 +30,8 @@ def run_mvp_concept_package(
     cad_dxf_path=None,
     pdf_path=None,
     pdf_scale=None,
+    pdf_furnished_path=None,
+    pdf_furnished_scale=None,
     delivery_root=None,
     delivery_package_name=None,
 ):
@@ -42,13 +44,28 @@ def run_mvp_concept_package(
     if cad_dxf_path and cad_plan is None:
         from core.cad_reader import read_dxf_with_rooms
         cad_plan = read_dxf_with_rooms(cad_dxf_path)
-    if pdf_path:
+    if pdf_path or pdf_furnished_path:
         # 矢量 PDF 与 cad_plan 同构，走同一融合通道；CAD/DXF 优先。
+        # pdf_path 为结构图（主），pdf_furnished_path 为平面布置图（辅）；
+        # 两份都给时做双图交叉验证融合（对齐失败会如实回退为只用结构图）。
         from core.pdf_plan_reader import read_pdf_plan
-        pdf_plan = read_pdf_plan(pdf_path, scale=pdf_scale)
-        if not pdf_plan.get("accepted"):
-            raise ValueError("PDF 图纸无法作为空间输入：" +
-                             "；".join(pdf_plan.get("limitations") or ["未知原因"]))
+        pdf_plan = None
+        if pdf_path:
+            pdf_plan = read_pdf_plan(pdf_path, scale=pdf_scale)
+            if not pdf_plan.get("accepted"):
+                raise ValueError("PDF 图纸无法作为空间输入：" +
+                                 "；".join(pdf_plan.get("limitations") or ["未知原因"]))
+        furnished_plan = None
+        if pdf_furnished_path:
+            furnished_plan = read_pdf_plan(pdf_furnished_path, scale=pdf_furnished_scale)
+            if not furnished_plan.get("accepted"):
+                raise ValueError("平面布置图 PDF 无法作为空间输入：" +
+                                 "；".join(furnished_plan.get("limitations") or ["未知原因"]))
+        if pdf_plan is not None and furnished_plan is not None:
+            from core.plan_fusion import fuse_plans
+            pdf_plan = fuse_plans(pdf_plan, furnished_plan)
+        elif pdf_plan is None:
+            pdf_plan = furnished_plan  # 只给了布置图：按普通单图路径处理
         if cad_plan is None:
             cad_plan = pdf_plan
 
@@ -57,6 +74,8 @@ def run_mvp_concept_package(
         source_files["cad"] = cad_dxf_path
     if pdf_path:
         source_files["pdf"] = pdf_path
+    if pdf_furnished_path:
+        source_files["pdf_furnished"] = pdf_furnished_path
     space_package = build_space_cognition_package(
         conditions,
         out_dir,
@@ -171,6 +190,7 @@ def run_mvp_concept_package(
         "allowed_modules": gate["allowed"],
         "blocked_modules": gate["blocked"],
         "delivery": delivery,
+        "plan_fusion": (cad_plan or {}).get("fusion"),
         "demo_mode": bool(palette.get("demo") or materials.get("demo") or layout.get("demo")),
     }
 
