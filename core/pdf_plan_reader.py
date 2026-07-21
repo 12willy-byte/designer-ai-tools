@@ -383,6 +383,16 @@ def read_pdf_plan(pdf_path, scale=None, page_number=0):
     base["virtual_walls"] = [(round(x1, 1), round(y1, 1), round(x2, 1), round(y2, 1))
                              for x1, y1, x2, y2 in virtual_segments]
 
+    # 残环检测标注降级（L 形残环修复·方案四 b）：只标注不伪造几何。
+    partial_rooms = _detect_partial_rooms(rooms)
+    if partial_rooms:
+        base["limitations"].append(
+            f"{len(partial_rooms)} 个闭环疑似残环（边界不完整、面积可能缩水，"
+            "partial=true 已标注并降置信）："
+            + "、".join(f"{r.get('name')}（{r.get('area_m2')}㎡）" for r in partial_rooms)
+            + "。本图未发现可与门洞/线段噪声干净分离的可信桥接缺口，本期不自动"
+            "桥接，需人工复核边界。")
+
     base["walls"] = [(round(x1, 1), round(y1, 1), round(x2, 1), round(y2, 1), t)
                      for x1, y1, x2, y2, t in walls]
     base["total_lines"] = len(base["walls"]) + len(base["doors"]) + len(base["windows"])
@@ -443,7 +453,7 @@ def read_pdf_plan(pdf_path, scale=None, page_number=0):
     # ---------- 置信度与限制 ----------
     base["confidence"] = _overall_confidence(
         calibrated, rooms, base["doors"], base["windows"],
-        has_virtual=bool(virtual_rooms))
+        has_virtual=bool(virtual_rooms), has_partial=bool(partial_rooms))
     if not calibrated:
         base["limitations"].append(
             "比例尺未能校准：坐标单位仍是 point 而非毫米，房间面积/尺寸不可信，"
@@ -1888,7 +1898,57 @@ def _mark_virtual_boundaries(rooms, virtual_segments, snap):
     return marked
 
 
-def _overall_confidence(calibrated, rooms, doors, windows, has_virtual=False):
+# 残环类型-面积先验（方案四）：已命名房间面积低于常识下限 → 疑似残环。
+# 只用于标注（partial=true + 提问），不改几何、不改名。
+_ROOM_TYPE_MIN_AREA_M2 = {"主卧": 8.0, "次卧": 5.0, "卧室": 5.0, "客厅": 15.0}
+
+
+def _detect_partial_rooms(rooms):
+    """L 形残环检测（方案四 b）：满框率 <0.7 为前提，三信号任一命中即标注。
+
+    前提：满框率（面积/bbox 面积）<0.7——残环沿缺口绕行，面积明显小于外接框。
+    信号：①边数 >12；②类型-面积先验（仅信环内命名）；③含虚拟桥接段。
+    防误伤：composite 开敞复合空间（边数多是合法形态）与 strip_space
+    合法条带（三面围合属正常）一律排除。
+    """
+    partial = []
+    for room in rooms:
+        if room.get("composite") or room.get("strip_space"):
+            continue
+        pts = [(p["x"], p["y"]) for p in room.get("floor_points") or []]
+        if len(pts) < 3:
+            continue
+        xs = [p[0] for p in pts]
+        ys = [p[1] for p in pts]
+        bbox_area = (max(xs) - min(xs)) * (max(ys) - min(ys)) / 1_000_000.0
+        area = room.get("area_m2") or 0
+        fill = area / bbox_area if bbox_area > 0 else 1.0
+        if fill >= 0.7:
+            continue  # 满框率正常（含含虚拟段的大环、名实不符条带）不标残环
+        reasons = []
+        if len(pts) > 12:
+            reasons.append(
+                f"边数 {len(pts)} 条（普通房间 4–8 条）且满框率 {round(fill, 2)} <0.7："
+                "闭环疑似沿缺口绕行")
+        name = room.get("name") or ""
+        if not room.get("name_source"):  # 类型先验仅信环内命名（低置信贴名不作数）
+            for key, min_area in _ROOM_TYPE_MIN_AREA_M2.items():
+                if key in name and area and area < min_area:
+                    reasons.append(
+                        f"{name} {area}㎡ 低于类型常识下限 {min_area}㎡：面积疑似缩水")
+                    break
+        if room.get("virtual_boundary"):
+            reasons.append("边界含虚拟桥接段（大洞口推断面，非实墙证据）")
+        if reasons:
+            room["partial"] = True
+            room["partial_reasons"] = reasons
+            room["partial_bbox_area_m2"] = round(bbox_area, 2)
+            partial.append(room)
+    return partial
+
+
+def _overall_confidence(calibrated, rooms, doors, windows, has_virtual=False,
+                        has_partial=False):
     if not calibrated:
         return 0.25
     if not rooms:
@@ -1901,6 +1961,9 @@ def _overall_confidence(calibrated, rooms, doors, windows, has_virtual=False):
     if has_virtual:
         # 含虚拟桥接边界（推断的开口面）：诚实下调一档
         conf = max(0.5, conf - 0.05)
+    if has_partial:
+        # 含残环（边界不完整）：再降一档
+        conf = max(0.5, conf - 0.03)
     return conf
 
 

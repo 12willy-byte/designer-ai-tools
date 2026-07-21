@@ -139,6 +139,22 @@ def _check_luluyi(plan):
                   % [q.get("question") for q in strip_qs])
         if any("阳台" in (q.get("question") or "") for q in strip_qs):
             _fail("阳台文字已用作命名来源，不应再报未成环提问")
+        # 方案四 b+d：主卧 L 形残环必须标注 partial + 降置信 + 面积缩水提问
+        master = next((r for r in rooms if r.get("name") == "主卧"), None)
+        if not master or not master.get("partial"):
+            _fail("露露姨主卧 7.57㎡（22 边/满框 0.51）必须标 partial=true")
+        if not master.get("partial_reasons") or not master.get("partial_bbox_area_m2"):
+            _fail("partial 环必须带 partial_reasons 与 partial_bbox_area_m2 留痕")
+        partial_qs = [q for q in profile.get("questions_to_confirm") or []
+                      if q.get("category") == "partial_room"]
+        if not any("主卧" in (q.get("question") or "") for q in partial_qs):
+            _fail("主卧残环必须生成面积缩水待确认问题，got %s"
+                  % [q.get("question") for q in partial_qs])
+        # 防误伤：满框率正常的环、strip_space 条带不得标 partial
+        for r in rooms:
+            if r.get("name") != "主卧" and r.get("partial"):
+                _fail("露露姨仅主卧应标 partial，%s（%.2f㎡）被误标"
+                      % (r.get("name"), r.get("area_m2") or 0))
     # 次卧条带不得经亲和度路径获新名（保持旧路径低置信兜底）
     strip_room = next((r for r in rooms if r.get("name") == "次卧"), None)
     if strip_room and strip_room.get("name_source") != "nearest_outside":
@@ -203,6 +219,12 @@ def _check_luojing_regression(structure, furnished, fused):
     if ring3.get("inferred_type"):
         _fail("6.08㎡ 环（长宽比 2.4）不得被推断类型，got %s"
               % ring3.get("inferred_type"))
+    # 方案四：罗菁原始图零 partial（满框率均正常；63.14㎡ 复合环合法形态
+    # 必须排除——残环标注对罗菁基线零漂移）
+    struct_partials = [r.get("name") for r in structure["detected_rooms"]
+                       if r.get("partial")]
+    if struct_partials:
+        _fail("罗菁原始图不得有 partial 标注（零漂移），got %s" % struct_partials)
     return {
         "structure_scale": structure["pdf"]["pt_to_mm"],
         "structure_rooms": len(structure["detected_rooms"]),

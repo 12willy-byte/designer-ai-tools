@@ -226,6 +226,7 @@ def extract_room_facts(space_profile, needs_profile):
             "adjacent_to": list(room.get("adjacent_to") or []),
             "requirements": requirements.get(name) or room.get("requirements") or {},
             "floor_points": room.get("floor_points") or [],
+            "partial": bool(room.get("partial")),
             "walls": _build_walls(width, length),
         })
 
@@ -369,6 +370,12 @@ def _build_deterministic_draft(space_profile, needs_profile, room_facts):
     assumptions.append(_assumption(
         "空间几何来自 %s（置信度 %s），施工与定制下单前必须现场复尺。"
         % (geometry.get("source_type") or "未知来源", geometry.get("confidence"))))
+    partial_names = [r["name"] for r in room_facts if r.get("partial")]
+    if partial_names:
+        assumptions.append(_assumption(
+            "以下房间为残环（partial，边界不完整、面积可能缩水）：%s。"
+            "其家具布置与工程量仅供参考，缺边范围需人工复核后重新深化。"
+            % "、".join(partial_names)))
     if project.get("area_m2"):
         assumptions.append(_assumption(
             "面积口径以输入建筑面积 %s㎡ 为准；各房间尺寸来自空间事实，加总与建面差异属公摊/墙体口径差。"

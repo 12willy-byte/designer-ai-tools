@@ -302,6 +302,21 @@ def build_space_questions(profile):
             "reason": "有文字未成的空间（多为走廊）缺失会使动线与面积账不实。",
             "required": False,
         })
+    # 残环提问（方案四 d）：partial 环面积疑似缩水，附满框对比。
+    for room in geometry.get("rooms") or []:
+        if not room.get("partial"):
+            continue
+        bbox_area = _num(room.get("partial_bbox_area_m2"))
+        area = _num(room.get("area_m2"))
+        compare = (f"满框约 {bbox_area}㎡ vs 实测 {area}㎡"
+                   if bbox_area else f"实测 {area}㎡")
+        questions.append({
+            "category": "partial_room",
+            "question": (f"{room.get('name')}疑似残环（{compare}）：边界不完整，"
+                         "实际范围是否更大？缺失边在哪一侧？"),
+            "reason": "残环会使该房间工程量与家具布置建立在缩水事实上。",
+            "required": False,
+        })
     return questions
 
 
@@ -436,6 +451,11 @@ def _cad_rooms_to_profile_rooms(cad_plan):
                     "inferred_type", "inference_confidence"):
             if room.get(key) is not None:
                 item[key] = room[key]
+        # 残环标注透传（方案四）：partial 只降置信不改数据。
+        if room.get("partial"):
+            item["partial"] = True
+            item["partial_reasons"] = room.get("partial_reasons") or []
+            item["partial_bbox_area_m2"] = room.get("partial_bbox_area_m2")
         rooms.append(item)
     return rooms
 
