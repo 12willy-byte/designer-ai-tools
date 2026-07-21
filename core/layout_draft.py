@@ -19,6 +19,11 @@ import os
 
 from core.ai_client import get_client
 from core.automation_gate import explain_blocked_module, explain_degraded_module
+# 门洞读取统一收口：语义/计数口径单点定义在 core.door_access，
+# 本模块不再自行判断 op["kind"]（假洞物理分层·方案 b）。
+from core.door_access import (
+    counts_as_interior_door, is_door_opening, opening_matches_kind,
+)
 
 
 SCHEMA_VERSION = "layout_draft.v1"
@@ -64,7 +69,7 @@ def build_layout_draft(space_profile, needs_profile, gate=None):
     room_facts = extract_room_facts(space_profile, needs_profile)
     if not room_facts:
         return _blocked_insufficient("缺少房间/空间事实，无法生成布局草案")
-    if not any(op["kind"] == "door" for room in room_facts for wall in room["walls"] for op in wall["openings"]):
+    if not any(is_door_opening(op) for room in room_facts for wall in room["walls"] for op in wall["openings"]):
         return _blocked_insufficient("缺少门洞位置事实，不能可靠判断入口与动线")
 
     draft = _build_deterministic_draft(space_profile, needs_profile, room_facts)
@@ -351,7 +356,10 @@ def _build_deterministic_draft(space_profile, needs_profile, room_facts):
 
     geometry = space_profile.get("geometry") or {}
     project = space_profile.get("project") or {}
-    door_count = sum(1 for r in room_facts for w in r["walls"] for o in w["openings"] if o["kind"] == "door")
+    # 摘要门数与预算门分项同源（口径归一）：只数"要装室内门"的洞口
+    # （door + ≤1.2m opening），超宽垭口/未证实洞口不计——统一访问层定义。
+    door_count = sum(1 for r in room_facts for w in r["walls"] for o in w["openings"]
+                     if counts_as_interior_door(o))
     window_count = sum(1 for r in room_facts for w in r["walls"] for o in w["openings"] if o["kind"] == "window")
 
     assumptions.append(_assumption(
@@ -444,7 +452,9 @@ def _room_type(room):
 def _pick_wall(room, avoid=("door", "window"), exclude_ids=()):
     """Pick the longest wall free of the given opening kinds."""
     def _ok(w, avoid_kinds):
-        return w["id"] not in exclude_ids and not any(o["kind"] in avoid_kinds for o in w["openings"])
+        return (w["id"] not in exclude_ids
+                and not any(opening_matches_kind(o, k)
+                            for o in w["openings"] for k in avoid_kinds))
 
     candidates = [w for w in room["walls"] if _ok(w, avoid)]
     if not candidates and "window" in avoid:
@@ -603,7 +613,7 @@ def _opening_constraints(room):
 
 
 def _room_circulation(room):
-    doors = [(w, o) for w in room["walls"] for o in w["openings"] if o["kind"] == "door"]
+    doors = [(w, o) for w in room["walls"] for o in w["openings"] if is_door_opening(o)]
     adjacent = "、".join(room.get("adjacent_to") or [])
     if doors:
         wall, door = doors[0]
@@ -621,7 +631,7 @@ def _room_circulation(room):
 
 def _confirm_points(rtype, room, req_text):
     points = []
-    doors = [o for w in room["walls"] for o in w["openings"] if o["kind"] == "door"]
+    doors = [o for w in room["walls"] for o in w["openings"] if is_door_opening(o)]
     windows = [o for w in room["walls"] for o in w["openings"] if o["kind"] == "window"]
     if doors:
         points.append("现场确认门扇开启方向（左开/右开、内开/外开），据此微调家具与柜体定位。")

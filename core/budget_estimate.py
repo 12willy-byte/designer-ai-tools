@@ -26,6 +26,7 @@ import re
 
 from core.ai_client import get_client
 from core.automation_gate import explain_blocked_module
+from core.door_access import counts_as_interior_door
 from core.layout_draft import extract_room_facts, _room_type
 
 
@@ -346,21 +347,12 @@ def _build_deterministic_estimate(space_profile, needs_profile, material_plan,
 
 
 def _counts_as_interior_door(op):
-    """室内门工程量口径（门语义分级联动）：
-    - 有门扇证据的 door → 计入；
-    - 门洞量级（≤1.2m）的 opening → 大概率要装门，计入；
-    - 超宽 opening（推拉门/垭口/飘窗面）与 unverified（疑似误判）→ 不计：
-      它们不需要采购室内门，计入会把门分项放大数倍。
-    无语义分级的输入（扫描/手动/DXF，door_type 为空）维持原口径全部计入。
+    """室内门工程量口径——统一收口到 core.door_access（单一口径定义点）。
+
+    保留本包装仅为兼容既有导入（验收脚本等）；语义以
+    door_access.counts_as_interior_door 为准，布局摘要门数同源。
     """
-    if op.get("kind") != "door":
-        return False
-    dtype = op.get("door_type")
-    if dtype in (None, "door"):
-        return True
-    if dtype == "opening" and _num(op.get("width_mm")) <= 1200:
-        return True
-    return False
+    return counts_as_interior_door(op)
 
 
 def _estimate_room(facts, material_map, layout_furniture, baseline, tier,
