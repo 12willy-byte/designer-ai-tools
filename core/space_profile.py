@@ -283,6 +283,25 @@ def build_space_questions(profile):
             "reason": "大空间静默无名会使概念/布局/预算的分房间小计全部失真。",
             "required": False,
         })
+    # 条带空间提问（方案三 d）：类型推断命中的环与有文字未成环的空间。
+    for room in geometry.get("rooms") or []:
+        if room.get("inferred_type"):
+            questions.append({
+                "category": "strip_space",
+                "question": (f"{room.get('name')}（{_num(room.get('area_m2'))}㎡）"
+                             f"疑似{room['inferred_type']}？系贴户型边缘+大开口形态的"
+                             "位置推断（低置信），未自动改名。"),
+                "reason": "条带空间类型影响功能定位与分房间小计。",
+                "required": False,
+            })
+    for item in geometry.get("unformed_space_texts") or []:
+        questions.append({
+            "category": "strip_space",
+            "question": (f"图中有“{item.get('text')}”文字但未识别到对应闭环空间"
+                         "（可能两端开口未围合）。该空间是否存在？范围如何？"),
+            "reason": "有文字未成的空间（多为走廊）缺失会使动线与面积账不实。",
+            "required": False,
+        })
     return questions
 
 
@@ -367,6 +386,9 @@ def _merge_cad_geometry(geometry, cad_plan):
         }
     merged["doors"] = _door_items(cad_plan)
     merged["windows"] = _segments_to_items(cad_plan.get("windows") or [])
+    # 未成环的"阳台/走廊"文字留痕透传（方案三 d 提问依据）。
+    if cad_plan.get("unformed_space_texts"):
+        merged["unformed_space_texts"] = cad_plan["unformed_space_texts"]
     if cad_plan.get("total_lines"):
         merged["notes"] = list(merged.get("notes") or []) + [f"CAD识别到 {cad_plan['total_lines']} 条线段"]
     if detected_rooms:
@@ -409,6 +431,11 @@ def _cad_rooms_to_profile_rooms(cad_plan):
         # 命名留痕（亲和度评分未采纳线索）透传，供 questions_to_confirm 提问。
         if room.get("naming_hint"):
             item["naming_hint"] = room["naming_hint"]
+        # 条带空间留痕透传（方案三）：文字锚定豁免与类型推断只加字段。
+        for key in ("strip_space", "space_kind", "net_width_mm",
+                    "inferred_type", "inference_confidence"):
+            if room.get(key) is not None:
+                item[key] = room[key]
         rooms.append(item)
     return rooms
 

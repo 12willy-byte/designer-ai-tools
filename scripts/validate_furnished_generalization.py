@@ -51,18 +51,33 @@ def _check_luluyi(plan):
     if abs(meta["pt_to_mm"] - 6.4458) / 6.4458 > 0.01:
         _fail("露露姨比例校准漂移：%s" % meta["pt_to_mm"])
 
-    # 1) 家具线条过滤
+    # 1) 家具线条过滤（净宽 <1m 断言含方案三豁免：文字锚定的合法条带除外）
     rooms = plan["detected_rooms"]
     for room in rooms:
         w, h = _room_dims(room)
-        if w and h and min(w, h) < 1000.0:
+        if w and h and min(w, h) < 1000.0 and not room.get("strip_space"):
             _fail("房间清单仍含净宽 <1m 的假房间：%s（%.0fx%.0f）"
                   % (room.get("name"), w, h))
+    # 方案三 a：文字锚定豁免——两个阳台条带复活且留痕完整
+    strips = [r for r in rooms if r.get("strip_space")]
+    if len(strips) != 2 or any(r.get("space_kind") != "阳台" for r in strips):
+        _fail("露露姨应有 2 个文字锚定豁免的阳台条带，got %s"
+              % [(r.get("name"), r.get("space_kind")) for r in strips])
+    if any(not r.get("net_width_mm") for r in strips):
+        _fail("豁免条带必须留痕净宽（net_width_mm）")
+    # 防误伤锁：1.05m 次卧条带无文字锚，不得豁免升级
+    strip_room = next((r for r in rooms if r.get("name") == "次卧"), None)
+    if strip_room and strip_room.get("strip_space"):
+        _fail("次卧条带不得获得 strip_space 豁免（无环内文字锚）")
     removed = plan.get("removed_rooms") or []
-    if len(removed) < 2:
-        _fail("露露姨应至少剔除 2 个假闭环（墙缝/家具条带），got %d" % len(removed))
+    if len(removed) < 1:
+        _fail("露露姨应至少剔除 1 个假闭环（细条/微小环），got %d" % len(removed))
     if not all(r.get("reasons") for r in removed):
         _fail("剔除的假房间必须带理由留痕")
+    if any((r.get("area_m2") or 0) > 1.0 and "细条" not in r["reasons"][0]
+           for r in removed):
+        _fail("文字锚定的阳台条带不应再被剔除，got %s"
+              % [(r["name"], r["area_m2"]) for r in removed])
     if (plan.get("furniture_lines") or {}).get("count", 0) <= 0:
         _fail("含家具布置图应标记出浮动单线（furniture_lines）")
     names = {r.get("name") for r in rooms}
@@ -116,6 +131,14 @@ def _check_luluyi(plan):
             _fail("22.82㎡ 大环静默无名：缺少“疑似客厅”待确认问题，got %s"
                   % [q.get("question") for q in naming_qs])
         big_naming = "question:" + naming_qs[0]["question"][:30]
+        # 方案三 d：走廊有文字未成环 → 必须提问兜底（本期不造虚拟环）
+        strip_qs = [q for q in profile.get("questions_to_confirm") or []
+                    if q.get("category") == "strip_space"]
+        if not any("走廊" in (q.get("question") or "") for q in strip_qs):
+            _fail("走廊文字未成环时必须生成待确认问题，got %s"
+                  % [q.get("question") for q in strip_qs])
+        if any("阳台" in (q.get("question") or "") for q in strip_qs):
+            _fail("阳台文字已用作命名来源，不应再报未成环提问")
     # 次卧条带不得经亲和度路径获新名（保持旧路径低置信兜底）
     strip_room = next((r for r in rooms if r.get("name") == "次卧"), None)
     if strip_room and strip_room.get("name_source") != "nearest_outside":
@@ -170,6 +193,16 @@ def _check_luojing_regression(structure, furnished, fused):
     if "未命名空间3" not in struct_names:
         _fail("罗菁原始图 6.08㎡ 环必须保持 未命名空间3，got %s"
               % sorted(struct_names))
+    # 方案三 c：位置/形态类型推断——两"阳台带"标 inferred_type 但不改名
+    inferred = {r.get("name"): r.get("inferred_type")
+                for r in structure["detected_rooms"] if r.get("inferred_type")}
+    if inferred != {"未命名空间": "阳台", "未命名空间2": "阳台"}:
+        _fail("罗菁原始图类型推断应为 未命名空间/未命名空间2=阳台，got %s" % inferred)
+    ring3 = next(r for r in structure["detected_rooms"]
+                 if r.get("name") == "未命名空间3")
+    if ring3.get("inferred_type"):
+        _fail("6.08㎡ 环（长宽比 2.4）不得被推断类型，got %s"
+              % ring3.get("inferred_type"))
     return {
         "structure_scale": structure["pdf"]["pt_to_mm"],
         "structure_rooms": len(structure["detected_rooms"]),

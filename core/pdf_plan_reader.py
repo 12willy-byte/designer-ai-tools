@@ -21,6 +21,7 @@ import re
 import pdfplumber
 
 from core.cad_reader import detect_room_faces_from_walls
+from core.door_access import get_doors
 
 
 SCHEMA_VERSION = "pdf_plan.v1"
@@ -254,6 +255,7 @@ def read_pdf_plan(pdf_path, scale=None, page_number=0):
         single_segs = floating_singles  # 覆盖率只看疑似家具/标注的浮动单线
         kept = []
         removed_rooms = []
+        strip_exempted = []
         dropped_slits = 0
         dropped_numeric = 0
         for room in rooms:
@@ -281,15 +283,37 @@ def read_pdf_plan(pdf_path, scale=None, page_number=0):
                                     "多为墙缝或符号描边"],
                     })
                     continue
+                # 文字锚定豁免（走廊与阳台识别·方案三 a）：环内有"阳台/走廊"
+                # 文字、或环已按最近文字得名为阳台/走廊的条带不是假房间——
+                # 净宽 <1m 物理下限对合法条带豁免，标 strip_space + 净宽留痕。
+                # 窄条带物理上容不下文字，故名锚与内锚并用；豁免仅针对净宽
+                # 下限，浮动线描边理由不适用。无锚环（如次卧条带）仍照常过滤。
+                anchor = _strip_space_anchor_text(pts, texts) or next(
+                    (k for k in ("阳台", "走廊") if k in name), None)
                 reasons = _furniture_room_reasons(room, w, d, single_segs, snap)
-                if reasons:
+                if reasons and not (anchor and all("净宽" in r for r in reasons)):
                     removed_rooms.append({
                         "name": name or "未命名", "area_m2": room.get("area_m2"),
                         "bbox_mm": [round(w), round(d)],
                         "reasons": reasons,
                     })
                     continue
+                if anchor and reasons:
+                    room["strip_space"] = True
+                    room["space_kind"] = anchor
+                    room["net_width_mm"] = round(min(w, d))
+                    strip_exempted.append(room)
+                kept.append(room)
+                continue
             kept.append(room)
+        if strip_exempted:
+            base["limitations"].append(
+                f"{len(strip_exempted)} 个净宽 <1m 的条带闭环因环内有“阳台/走廊”"
+                "文字锚定，按合法条带空间保留（strip_space=true，净宽已留痕），"
+                "需人工复核："
+                + "、".join(f"{r.get('name') or '未命名'}（{r.get('area_m2')}㎡，"
+                            f"净宽 {r['net_width_mm']}mm）" for r in strip_exempted)
+                + "。")
         if dropped_slits:
             base["limitations"].append(
                 f"{dropped_slits} 个细条/微小闭环（墙缝或符号描边，最短边 <450mm 或面积 <1㎡）"
@@ -382,6 +406,39 @@ def read_pdf_plan(pdf_path, scale=None, page_number=0):
     base["door_details"] = build_door_details(
         base["doors"], door_arcs, rooms, base["bounds"], calibrated,
         tick_gaps=base["jamb_tick_gaps"])
+
+    # ---------- 条带空间类型推断（方案三 c：只写 inferred_type 字段，不改名） ----------
+    inferred_types = _infer_strip_space_types(rooms, base["door_details"])
+    if inferred_types:
+        base["limitations"].append(
+            f"{inferred_types} 个未命名闭环按位置/形态证据（贴户型边缘 + 阳台尺度"
+            " + ≥1.8m 大开口贴邻）推断 inferred_type=阳台（低置信，未改名），"
+            "已生成待确认问题，需人工复核。")
+
+    # 有"阳台/走廊"文字但未成环的空间留痕（方案三 d 提问依据）：类型推断只
+    # 覆盖完整闭环，两端开口的走廊本期不构造虚拟环，留痕提问兜底。
+    final_polys = [[(p["x"], p["y"]) for p in r.get("floor_points") or []]
+                   for r in rooms]
+    used_names = {r.get("name") or "" for r in rooms}
+    unformed = []
+    for t in texts:
+        ttext = t.get("text") or ""
+        if not any(k in ttext for k in ("阳台", "走廊")):
+            continue
+        inside = any(len(poly) >= 3 and _point_in_polygon(t["x"], t["y"], poly)
+                     for poly in final_polys)
+        # 环外但已用作某环命名来源（nearest_outside）的文字不算"未成环"
+        used = any(ttext == name or ttext in name for name in used_names)
+        if not inside and not used:
+            unformed.append({"text": ttext, "x": round(t["x"], 1),
+                             "y": round(t["y"], 1)})
+    if unformed:
+        base["unformed_space_texts"] = unformed
+        base["limitations"].append(
+            f"{len(unformed)} 处“阳台/走廊”文字未落在任何闭环内（两端开口的走廊/"
+            "未围合区域本期不构造虚拟环）："
+            + "、".join(u["text"] for u in unformed)
+            + "。已留痕 unformed_space_texts 供提问复核，需人工补充该空间。")
 
     # ---------- 置信度与限制 ----------
     base["confidence"] = _overall_confidence(
@@ -1657,6 +1714,84 @@ def _disambiguate_room_names(rooms, texts, far_threshold=2500.0, walls=None):
             if seen[name] > 1:
                 room["name"] = f"{name}{seen[name]}"
     return unnamed, fallback, affinity
+
+
+def _strip_space_anchor_text(pts, texts):
+    """文字锚定（方案三 a）：环内含"阳台/走廊"文字时返回该类型词，否则 None。
+
+    文字是设计师显式标注的强证据：假墙缝/家具描边环从不含房间名文字，
+    而有锚定的条带（阳台栏杆外沿、走廊）是合法空间，豁免 <1m 物理下限。
+    """
+    if len(pts) < 3:
+        return None
+    for t in texts or []:
+        ttext = t.get("text") or ""
+        for kind in ("阳台", "走廊"):
+            if kind in ttext and _point_in_polygon(t["x"], t["y"], pts):
+                return kind
+    return None
+
+
+def _infer_strip_space_types(rooms, door_details, edge_margin=300.0):
+    """位置/形态类型推断（方案三 c）：只写 inferred_type 字段，不改名。
+
+    未命名完整环同时满足以下形态证据时推断为阳台（inference_confidence=low）：
+    - 阳台尺度：面积 2–12㎡ 且长宽比 ≤2（排除走廊级长条与客厅级大环）；
+    - 贴户型边缘：环 bbox 任一边距全部环并集 bbox 对应边 ≤300mm；
+    - 大开口证据：≥1.8m 通行洞口（推拉门/落地窗量级，经 get_doors
+      openings 口径读取）中点贴邻环 bbox（外扩 400mm）。
+    改名会破命名零漂移锁，推断类型 + 提问达到同等诚实效果。
+    """
+    polys = [[(p["x"], p["y"]) for p in r.get("floor_points") or []]
+             for r in rooms]
+    boxes = []
+    for poly in polys:
+        if len(poly) >= 3:
+            xs = [p[0] for p in poly]
+            ys = [p[1] for p in poly]
+            boxes.append((min(xs), min(ys), max(xs), max(ys)))
+    if not boxes:
+        return 0
+    ux0 = min(b[0] for b in boxes)
+    uy0 = min(b[1] for b in boxes)
+    ux1 = max(b[2] for b in boxes)
+    uy1 = max(b[3] for b in boxes)
+    wide_openings = [d for d in get_doors(door_details, "openings")
+                     if (d.get("width_mm") or 0) >= 1800]
+    count = 0
+    for room, poly in zip(rooms, polys):
+        name = room.get("name") or ""
+        if not name.startswith("未命名空间") or len(poly) < 3:
+            continue
+        xs = [p[0] for p in poly]
+        ys = [p[1] for p in poly]
+        bx0, by0, bx1, by1 = min(xs), min(ys), max(xs), max(ys)
+        w, h = bx1 - bx0, by1 - by0
+        area = room.get("area_m2") or 0
+        if not (2.0 <= area <= 12.0) or min(w, h) <= 0:
+            continue
+        if max(w, h) / min(w, h) > 2.0:
+            continue
+        on_edge = (abs(bx0 - ux0) <= edge_margin or abs(bx1 - ux1) <= edge_margin
+                   or abs(by0 - uy0) <= edge_margin or abs(by1 - uy1) <= edge_margin)
+        if not on_edge:
+            continue
+        has_wide = False
+        for det in wide_openings:
+            start, end = det.get("start"), det.get("end")
+            if not (start and end):
+                continue
+            mx = (start[0] + end[0]) / 2
+            my = (start[1] + end[1]) / 2
+            if (bx0 - 400 <= mx <= bx1 + 400) and (by0 - 400 <= my <= by1 + 400):
+                has_wide = True
+                break
+        if not has_wide:
+            continue
+        room["inferred_type"] = "阳台"
+        room["inference_confidence"] = "low"
+        count += 1
+    return count
 
 
 def _furniture_room_reasons(room, w, d, single_segs, snap):
