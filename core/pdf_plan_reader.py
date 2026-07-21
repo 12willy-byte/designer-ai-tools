@@ -327,8 +327,13 @@ def read_pdf_plan(pdf_path, scale=None, page_number=0):
     #    name_source=nearest_outside + 低置信；没有可用兜底文字或最近
     #    文字超过 2500mm 的闭环命名为"未命名空间"；
     # 3) 同名闭环按面积降序编号（卧室、卧室2……）：下游空间画像按名字
-    #    合并同名房间，不编号会丢掉同名但独立的闭环（如两个卧室）。
-    renamed, fallback_named = _disambiguate_room_names(rooms, texts)
+    #    合并同名房间，不编号会丢掉同名但独立的闭环（如两个卧室）；
+    # 4) 超出 2500mm 的环进入文字-环亲和度评分路径（方案 b：语义/环边界
+    #    距离/字号/穿墙遮挡，≥0.6 采纳，name_source=affinity_outside，
+    #    低置信）——覆盖设计师把房间名写在环外空白区的制图习惯；
+    #    评分也未采纳的环留 naming_hint，供 questions_to_confirm 提问。
+    renamed, fallback_named, affinity_named = _disambiguate_room_names(
+        rooms, texts, walls=walls)
     if renamed:
         base["limitations"].append(
             f"{renamed} 个闭环没有落在其内部的房间名文字且没有 2500mm 内的"
@@ -338,6 +343,11 @@ def read_pdf_plan(pdf_path, scale=None, page_number=0):
             f"{fallback_named} 个闭环内部没有房间名文字，已用 2500mm 内最近的"
             "未被其他闭环占用的文字兜底命名（name_source=nearest_outside，低置信），"
             "需人工复核命名。")
+    if affinity_named:
+        base["limitations"].append(
+            f"{affinity_named} 个闭环无环内文字且超出 2500mm 就近兜底范围，已按"
+            "文字-环亲和度评分（语义词表/环边界距离/字号/穿墙遮挡）命名"
+            "（name_source=affinity_outside，低置信），需人工复核命名。")
 
     # 虚拟桥接边界标记：含大洞口推断墙的房间降置信，供下游闸门区分。
     virtual_segments = result.get("virtual_segments") or []
@@ -1450,15 +1460,126 @@ def _relabel_rooms_by_inner_texts(rooms, texts):
     return composite_count
 
 
-def _disambiguate_room_names(rooms, texts, far_threshold=2500.0):
-    """同名编号 + 命名环内优先/环外兜底诚实化。返回 (未命名数, 兜底命名数)。
+# 环外亲和度命名（方案 b）：设计师常把房间名写到环外空白区（图面拥挤外溢、
+# 成组命名、竖排贴边），单一距离阈值（2500mm）是对归属表达的过度简化。
+# 评分只处理旧 2500mm 就近路径放弃的环，四分量可调，禁止按图纸特判。
+_ROOM_NAME_LEXICON = ("客厅", "餐厅", "主卧", "次卧", "卧室", "厨房", "卫生间",
+                      "书房", "阳台", "玄关", "走廊", "储物", "衣帽", "客卫", "主卫")
+# 房间类型-面积物理先验（㎡ 上限，沿袭门宽 1.2m/净宽 1m 物理先验风格）：
+# 实测"阳台"文字贴邻 22.8㎡ 客厅环（0 穿墙、1.2m）会被距离分满分误采纳——
+# 距离/字号/遮挡四项挡不住"近但名实不符"，物理先验是唯一能干净区分的证据。
+# 未列出的类型（客厅/餐厅/卧室/书房等）不设上限（无先验，不误伤）。
+_ROOM_TYPE_MAX_AREA_M2 = {"阳台": 10.0, "玄关": 8.0, "走廊": 8.0, "储物": 8.0,
+                          "衣帽": 8.0, "卫生间": 12.0, "客卫": 12.0, "主卫": 12.0,
+                          "厨房": 15.0}
+_AFFINITY_MAX_DIST_MM = 5000.0   # 文字到环边界距离上限（外溢命名可达 3m+）
+_AFFINITY_ACCEPT_SCORE = 0.6     # 采纳门槛
+_AFFINITY_W_SEMANTIC = 0.45      # 语义分权重（强房间词命中且类型-面积先验成立=1）
+_AFFINITY_W_DIST = 0.30          # 距离分权重（1 - dist/5000）
+_AFFINITY_W_FONT = 0.25          # 字号分权重（文字高/房间名中位字号，封顶 1）
+_AFFINITY_OCCLUSION_PENALTY = 0.4  # 穿墙遮挡惩罚（连线穿过 ≥1 道墙线）
+# 遮挡惩罚阈值 ≥1（方案草案为 ≥2，实施实测收紧）：正确候选是"贴邻环的空白区
+# 文字"（0 穿墙），而罗菁平面图"主卧"@4.2m 仅穿 1 道墙（0.748）会被 ≥2 漏挡
+# 造成基线漂移；≥1 在双图实测中正好把两类分开。
+
+
+def _text_to_room_boundary(text, poly):
+    """文字到闭环边界的最近距离与最近边界点（文字在环内时距离为 0）。
+
+    到环边界（而非环心）的距离天然优待贴边外放的长条形/复合环——
+    名字常被挤到大环边缘的空白区。
+    """
+    px, py = text["x"], text["y"]
+    if _point_in_polygon(px, py, poly):
+        return 0.0, (px, py)
+    best_d, best_pt = None, None
+    n = len(poly)
+    for i in range(n):
+        x1, y1 = poly[i]
+        x2, y2 = poly[(i + 1) % n]
+        dx, dy = x2 - x1, y2 - y1
+        seg_len2 = dx * dx + dy * dy
+        t = 0.0 if seg_len2 == 0 else max(
+            0.0, min(1.0, ((px - x1) * dx + (py - y1) * dy) / seg_len2))
+        qx, qy = x1 + t * dx, y1 + t * dy
+        d = math.hypot(px - qx, py - qy)
+        if best_d is None or d < best_d:
+            best_d, best_pt = d, (qx, qy)
+    return best_d, best_pt
+
+
+def _count_wall_crossings(p1, p2, walls):
+    """文字到环边界最近点的连线严格穿过的墙线数量（遮挡惩罚依据）。
+
+    严格交叉（跨立实验，端点接触不算）——贴边文字的连线终点落在目标环
+    边界墙上，不应把目标墙本身计入遮挡。
+    """
+    def _cross(o, a, b):
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+    count = 0
+    for w in walls or []:
+        p3, p4 = (w[0], w[1]), (w[2], w[3])
+        d1 = _cross(p3, p4, p1)
+        d2 = _cross(p3, p4, p2)
+        d3 = _cross(p1, p2, p3)
+        d4 = _cross(p1, p2, p4)
+        if d1 * d2 < 0 and d3 * d4 < 0:
+            count += 1
+    return count
+
+
+def _affinity_name_score(text, poly, walls, median_font_h, room_area_m2=None):
+    """文字-环亲和度评分。返回 (score, evidence)；score ≥0.6 才采纳。
+
+    score = 0.45·语义 + 0.30·(1−dist/5000) + 0.25·字号 − 0.4·(穿墙≥1)
+    语义分：房间名词表命中且通过类型-面积物理先验（如阳台 ≤10㎡）=1，否则=0。
+    """
+    hit = any(k in (text.get("text") or "") for k in _ROOM_NAME_LEXICON)
+    plausible = True
+    if hit and room_area_m2:
+        for k, max_area in _ROOM_TYPE_MAX_AREA_M2.items():
+            if k in text["text"] and room_area_m2 > max_area:
+                plausible = False  # 类型-面积物理先验不成立（如 22.8㎡ 环不是阳台）
+                break
+    semantic = 1.0 if (hit and plausible) else 0.0
+    dist, near_pt = _text_to_room_boundary(text, poly)
+    dist_score = max(0.0, 1.0 - dist / _AFFINITY_MAX_DIST_MM)
+    font_h = text.get("height") or 0.0
+    font_score = min(1.0, font_h / median_font_h) if median_font_h > 0 else 0.5
+    crossings = _count_wall_crossings((text["x"], text["y"]), near_pt, walls)
+    occlusion = _AFFINITY_OCCLUSION_PENALTY if crossings >= 1 else 0.0
+    score = (_AFFINITY_W_SEMANTIC * semantic + _AFFINITY_W_DIST * dist_score
+             + _AFFINITY_W_FONT * font_score - occlusion)
+    evidence = {
+        "semantic": semantic,
+        "dist_mm": round(dist, 1),
+        "font_h": round(font_h, 1),
+        "median_font_h": round(median_font_h, 1),
+        "wall_crossings": crossings,
+    }
+    return score, evidence
+
+
+def _disambiguate_room_names(rooms, texts, far_threshold=2500.0, walls=None):
+    """同名编号 + 命名环内优先/环外兜底诚实化。返回 (未命名数, 兜底命名数, 亲和命名数)。
 
     环内优先原则：落在任一闭环内部的房间名文字被该环"占用"，不再参与
     其他环的就近命名——就近匹配曾让环外名字贴到墙缝条带/家具碎片上
     （名实不符）。环内无文字的闭环只能用未被占用的文字兜底，且标低置信。
+
+    环外兜底分两级（旧路径绝对优先，评分路径只处理旧路径放弃的环）：
+    1) 2500mm 内最近未占用文字兜底（name_source=nearest_outside）；
+    2) 文字-环亲和度评分（语义词表 + 到环边界距离 + 字号 + 穿墙遮挡惩罚，
+       ≥0.6 采纳，name_source=affinity_outside）——覆盖设计师把房间名
+       写在环外空白区（图面拥挤外溢）的制图习惯（如客厅名距厅环 3m）。
+       评分也未采纳的环命名为"未命名空间"并留 naming_hint（最近未占用
+       文字与距离/得分），供 questions_to_confirm 生成待确认问题。
     """
     name_texts = [t for t in texts
                   if any(k in (t.get("text") or "") for k in _PDF_ROOM_KEYWORDS)]
+    heights = sorted(t.get("height") or 0.0 for t in name_texts)
+    median_font_h = heights[len(heights) // 2] if heights else 0.0
     polys = []
     for room in rooms:
         polys.append([(p["x"], p["y"]) for p in room.get("floor_points") or []])
@@ -1470,6 +1591,7 @@ def _disambiguate_room_names(rooms, texts, far_threshold=2500.0):
                 break
     unnamed = 0
     fallback = 0
+    affinity = 0
     for room, poly in zip(rooms, polys):
         if len(poly) < 3 or not name_texts:
             continue
@@ -1485,16 +1607,43 @@ def _disambiguate_room_names(rooms, texts, far_threshold=2500.0):
             continue
         nearest_t = min(free, key=lambda t: math.hypot(t["x"] - cx, t["y"] - cy))
         nearest = math.hypot(nearest_t["x"] - cx, nearest_t["y"] - cy)
-        if nearest > far_threshold:
-            room["name"] = "未命名空间"
-            room.pop("name_source", None)
-            room.pop("name_confidence", None)
-            unnamed += 1
-        else:
+        if nearest <= far_threshold:
             room["name"] = nearest_t["text"]
             room["name_source"] = "nearest_outside"   # 环外兜底命名：低置信，需复核
             room["name_confidence"] = "low"
             fallback += 1
+            continue
+        # 亲和度评分路径：旧 2500mm 就近路径放弃的环才进入，不改变旧路径行为。
+        best_t, best_score, best_ev = None, 0.0, None
+        hint_t, hint_score, hint_ev = None, 0.0, None  # 语义有效最高分候选（提问线索）
+        for t in free:
+            score, ev = _affinity_name_score(t, poly, walls, median_font_h,
+                                             room_area_m2=room.get("area_m2"))
+            if score > best_score:
+                best_t, best_score, best_ev = t, score, ev
+            if ev["semantic"] == 1.0 and score > hint_score:
+                hint_t, hint_score, hint_ev = t, score, ev
+        if best_t is not None and best_score >= _AFFINITY_ACCEPT_SCORE:
+            room["name"] = best_t["text"]
+            room["name_source"] = "affinity_outside"   # 环外亲和度命名：低置信，需复核
+            room["name_confidence"] = "low"
+            room["name_affinity"] = dict(best_ev, score=round(best_score, 3))
+            affinity += 1
+        else:
+            room["name"] = "未命名空间"
+            room.pop("name_source", None)
+            room.pop("name_confidence", None)
+            # 提问线索取语义有效的最高分候选（而非被物理先验/遮挡压掉的
+            # 最高分），使问题问"疑似客厅？"而非"疑似阳台？"。
+            use_t, use_score, use_ev = (
+                (hint_t, hint_score, hint_ev) if hint_t is not None
+                else (best_t, best_score, best_ev))
+            room["naming_hint"] = {
+                "nearest_free_text": use_t["text"] if use_t else None,
+                "affinity_score": round(use_score, 3),
+                "dist_mm": use_ev["dist_mm"] if use_ev else None,
+            }
+            unnamed += 1
     # 同名闭环按面积降序编号（rooms 已是面积降序）
     counts = {}
     for room in rooms:
@@ -1507,7 +1656,7 @@ def _disambiguate_room_names(rooms, texts, far_threshold=2500.0):
             seen[name] = seen.get(name, 0) + 1
             if seen[name] > 1:
                 room["name"] = f"{name}{seen[name]}"
-    return unnamed, fallback
+    return unnamed, fallback, affinity
 
 
 def _furniture_room_reasons(room, w, d, single_segs, snap):

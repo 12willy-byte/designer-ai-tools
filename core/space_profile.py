@@ -260,6 +260,29 @@ def build_space_questions(profile):
             "reason": "这些约束决定厨房、卫生间和机电改造边界。",
             "required": True,
         })
+    # 无名大环兜底提问（方案 d）：亲和度评分也未采纳的 ≥10㎡ 闭环不得静默
+    # 无名——命名与提问两者必居其一。附最近未占用文字线索（若有）。
+    geometry = profile.get("geometry") or {}
+    for room in geometry.get("rooms") or []:
+        name = room.get("name") or ""
+        area = _num(room.get("area_m2")) or 0
+        if not name.startswith("未命名空间") or area < 10:
+            continue
+        hint = room.get("naming_hint") or {}
+        hint_text = hint.get("nearest_free_text")
+        if hint_text:
+            detail = (f"最相近的未占用房间名文字“{hint_text}”"
+                      f"（距环边界约 {round((hint.get('dist_mm') or 0) / 1000, 1)}m，"
+                      f"亲和度评分 {hint.get('affinity_score')} 未达采纳线）")
+        else:
+            detail = "图中没有可用的未占用房间名文字"
+        questions.append({
+            "category": "room_naming",
+            "question": (f"{area}㎡ 空间疑似{hint_text or '功能房间'}？"
+                         f"该闭环无环内房间名文字，{detail}。"),
+            "reason": "大空间静默无名会使概念/布局/预算的分房间小计全部失真。",
+            "required": False,
+        })
     return questions
 
 
@@ -291,6 +314,10 @@ def _normalize_profile_rooms(rooms):
             # 下游按基准表默认值估算并标注假设。
             "ceiling_height_mm": int(_num(room.get("ceiling_height_mm")) or 0),
         })
+        # 解析侧命名留痕（亲和度评分未采纳的线索）仅当存在时透传，
+        # 供 build_space_questions 生成"疑似XX？"待确认问题，不影响既有字段。
+        if room.get("naming_hint"):
+            result[-1]["naming_hint"] = room["naming_hint"]
     return [room for room in result if room.get("name")]
 
 
@@ -379,6 +406,9 @@ def _cad_rooms_to_profile_rooms(cad_plan):
             item["confidence"] = _num(room.get("confidence"))
         if room.get("needs_site_verification"):
             item["needs_site_verification"] = True
+        # 命名留痕（亲和度评分未采纳线索）透传，供 questions_to_confirm 提问。
+        if room.get("naming_hint"):
+            item["naming_hint"] = room["naming_hint"]
         rooms.append(item)
     return rooms
 

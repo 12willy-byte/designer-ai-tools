@@ -93,6 +93,33 @@ def _check_luluyi(plan):
         _fail("露露姨应有 ≥4 个超宽洞口被物理先验降级，got %d" % len(downgraded))
     if any(d.get("type") != "opening" for d in downgraded):
         _fail("超宽降级洞口必须判为 opening")
+
+    # 5) 复合环命名（方案 b+d）：22.82㎡ 大环不得静默无名——
+    #    要么亲和度命名（affinity_outside + 低置信 + 评分留痕），
+    #    要么 naming_hint + questions_to_confirm 生成"疑似客厅"待确认问题。
+    big = next((r for r in rooms if (r.get("area_m2") or 0) >= 20), None)
+    if not big:
+        _fail("露露姨应有 ≥20㎡ 的客厅大闭环")
+    if big.get("name_source") == "affinity_outside":
+        if big.get("name_confidence") != "low" or not big.get("name_affinity"):
+            _fail("亲和度命名必须标低置信并带评分留痕：%s" % big.get("name"))
+        big_naming = "affinity:" + big["name"]
+    else:
+        hint = big.get("naming_hint") or {}
+        if hint.get("nearest_free_text") != "客厅":
+            _fail("22.82㎡ 环未获命名时命名线索应为“客厅”，got %s" % hint)
+        from core.space_profile import build_space_profile
+        profile = build_space_profile({}, cad_plan=plan)
+        naming_qs = [q for q in profile.get("questions_to_confirm") or []
+                     if q.get("category") == "room_naming"]
+        if not any("客厅" in (q.get("question") or "") for q in naming_qs):
+            _fail("22.82㎡ 大环静默无名：缺少“疑似客厅”待确认问题，got %s"
+                  % [q.get("question") for q in naming_qs])
+        big_naming = "question:" + naming_qs[0]["question"][:30]
+    # 次卧条带不得经亲和度路径获新名（保持旧路径低置信兜底）
+    strip_room = next((r for r in rooms if r.get("name") == "次卧"), None)
+    if strip_room and strip_room.get("name_source") != "nearest_outside":
+        _fail("次卧条带不得经亲和度路径改名：%s" % strip_room.get("name_source"))
     return {
         "pt_to_mm": meta["pt_to_mm"],
         "rooms": {r.get("name"): r.get("area_m2") for r in rooms},
@@ -102,6 +129,7 @@ def _check_luluyi(plan):
         "door_typed": sum(1 for d in details if d.get("type") == "door"),
         "wide_downgraded": len(downgraded),
         "fallback_named": [r.get("name") for r in fallback_named],
+        "big_room_naming": big_naming,
     }
 
 
@@ -131,6 +159,17 @@ def _check_luojing_regression(structure, furnished, fused):
     for det in fused.get("door_details") or []:
         if det.get("type") == "door" and (det.get("width_mm") or 0) > 1200:
             _fail("罗菁融合出现 >1.2m 的 door：%s" % det.get("width_mm"))
+    # 复合环命名对罗菁零漂移：双图均不得出现亲和度改名；
+    # 6.08㎡ 环必须保持"未命名空间3"（防漂移锁定）
+    for label, parsed in (("原始图", structure), ("平面图", furnished)):
+        for room in parsed.get("detected_rooms") or []:
+            if room.get("name_source") == "affinity_outside":
+                _fail("罗菁%s 出现亲和度改名（基线漂移）：%s（%.2f㎡）"
+                      % (label, room.get("name"), room.get("area_m2") or 0))
+    struct_names = {r.get("name") for r in structure["detected_rooms"]}
+    if "未命名空间3" not in struct_names:
+        _fail("罗菁原始图 6.08㎡ 环必须保持 未命名空间3，got %s"
+              % sorted(struct_names))
     return {
         "structure_scale": structure["pdf"]["pt_to_mm"],
         "structure_rooms": len(structure["detected_rooms"]),
