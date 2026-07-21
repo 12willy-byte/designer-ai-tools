@@ -345,6 +345,24 @@ def _build_deterministic_estimate(space_profile, needs_profile, material_plan,
     return estimate
 
 
+def _counts_as_interior_door(op):
+    """室内门工程量口径（门语义分级联动）：
+    - 有门扇证据的 door → 计入；
+    - 门洞量级（≤1.2m）的 opening → 大概率要装门，计入；
+    - 超宽 opening（推拉门/垭口/飘窗面）与 unverified（疑似误判）→ 不计：
+      它们不需要采购室内门，计入会把门分项放大数倍。
+    无语义分级的输入（扫描/手动/DXF，door_type 为空）维持原口径全部计入。
+    """
+    if op.get("kind") != "door":
+        return False
+    dtype = op.get("door_type")
+    if dtype in (None, "door"):
+        return True
+    if dtype == "opening" and _num(op.get("width_mm")) <= 1200:
+        return True
+    return False
+
+
 def _estimate_room(facts, material_map, layout_furniture, baseline, tier,
                    ceiling_known, needs_profile, assumptions):
     """Rule-computed line items for one room. Returns (room_out, quantity_facts)."""
@@ -392,7 +410,10 @@ def _estimate_room(facts, material_map, layout_furniture, baseline, tier,
         "has_window": any(op.get("kind") == "window" for op in openings),
         "custom_cabinet_m2": 0.0,
         "kitchen_counter_m": 0.0,
-        "door_count": sum(1 for op in openings if op.get("kind") == "door"),
+        "door_count": sum(1 for op in openings if _counts_as_interior_door(op)),
+        "door_openings_skipped": sum(1 for op in openings
+                                     if op.get("kind") == "door"
+                                     and not _counts_as_interior_door(op)),
     }
 
     items = []
@@ -565,8 +586,13 @@ def _whole_house_items(space_profile, room_facts, quantity_facts, baseline, tier
     else:
         add("设计费", room_total, "计费面积=各房间面积加总 %.2f㎡（输入未提供建筑面积）" % room_total)
 
-    # 室内门：按空间事实中的门洞数量
+    # 室内门：按空间事实中的门洞数量（经门语义分级过滤，超宽/未证实洞口不计）
     door_total = sum(q.get("door_count", 0) for q in quantity_facts.values())
+    door_skipped = sum(q.get("door_openings_skipped", 0) for q in quantity_facts.values())
+    if door_skipped:
+        assumptions.append(_assumption(
+            "%d 个超宽（>1.2m）或未证实洞口未计入室内门工程量（推拉门/垭口/飘窗面"
+            "或疑似误判均不需采购室内门），需设计师按现场确认后另行估算。" % door_skipped))
     if door_total:
         entry = (baseline.get("unit_prices") or {}).get("主材", {}).get("室内门（含门套）") or {}
         low, high = (entry.get("tiers") or {}).get(tier) or [0, 0]
@@ -575,7 +601,8 @@ def _whole_house_items(space_profile, room_facts, quantity_facts, baseline, tier
             "item": "室内门（含门套）",
             "quantity": door_total,
             "unit": "樘",
-            "quantity_basis": "门数量=空间事实中的门洞数 %d 樘（含套线，入户门未计入）" % door_total,
+            "quantity_basis": "门数量=空间事实中有门扇证据的门+门洞量级（≤1.2m）洞口共 %d 樘"
+            "（含套线；入户门、超宽垭口/推拉门与未证实洞口未计入）" % door_total,
             "unit_price_low": _money(low),
             "unit_price_high": _money(high),
             "unit_price_basis": "基准表·主材/室内门（含门套）·%s" % tier,
@@ -757,7 +784,7 @@ def _build_material_list(quantity_facts, baseline, tier):
             "baseline_entry": "室内门（含门套）",
             "quantity": door_total,
             "unit": "樘",
-            "quantity_basis": "空间事实中的门洞数 %d 樘" % door_total,
+            "quantity_basis": "空间事实中有门扇证据的门+门洞量级（≤1.2m）洞口共 %d 樘" % door_total,
             "tier": tier,
             "unit_price_low": _money(low),
             "unit_price_high": _money(high),

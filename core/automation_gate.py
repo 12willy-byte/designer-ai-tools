@@ -28,13 +28,18 @@ def build_automation_gate(space_profile, needs_profile, constraint_report=None, 
 
     allowed = []
     blocked = []
+    degraded = []
     warnings = _collect_warnings(space_profile, needs_profile, constraint_report)
 
     _decide_concept_package(space_profile, needs_profile, allowed, blocked)
-    _decide_layout_draft(space_profile, needs_profile, constraint_report, allowed, blocked)
+    _decide_layout_draft(space_profile, needs_profile, constraint_report, allowed, blocked, degraded)
     _decide_budget_estimate(space_profile, needs_profile, allowed, blocked)
     _decide_material_palette(needs_profile, allowed, blocked, warnings)
     _block_construction_docs(blocked, constraint_report)
+
+    for item in degraded:
+        warnings.append(
+            "%s按降级模式生成：%s" % (item["label"], "；".join(item["reasons"])))
 
     required_confirmations = [q for q in unified_questions if q.get("required")]
     scores = {
@@ -47,12 +52,14 @@ def build_automation_gate(space_profile, needs_profile, constraint_report=None, 
         "schema_version": SCHEMA_VERSION,
         "allowed": allowed,
         "blocked": blocked,
+        "degraded": degraded,
         "warnings": _dedupe_strings(warnings),
         "required_confirmations": required_confirmations,
         "scores": scores,
         "constraint_summary": {
             "critical_missing": constraint_report.get("critical_missing", []),
             "layout_missing": constraint_report.get("layout_missing", []),
+            "layout_degraded": constraint_report.get("layout_degraded", []),
         },
     }
 
@@ -71,6 +78,7 @@ def build_constraint_report(space_profile, needs_profile=None):
 
     critical_missing = []
     layout_missing = []
+    layout_degraded = []
     if not rooms:
         critical_missing.append("缺少房间/空间列表")
     if not structural:
@@ -82,7 +90,11 @@ def build_constraint_report(space_profile, needs_profile=None):
     if not doors:
         layout_missing.append("缺少门洞位置，不能可靠判断入口和动线")
     if not windows:
-        layout_missing.append("缺少窗户/采光面位置，色彩、采光和视觉焦点需要复核")
+        # 缺窗与缺门洞几何区别对待：门洞是动线硬事实，缺失仍拦截；
+        # 窗户/采光面缺失时布局草案按降级模式生成并明确标注，不拦截。
+        layout_degraded.append(
+            "缺少窗户/采光面位置：布局草案按降级模式生成——不判断朝向与窗位，"
+            "采光、通风、色彩和视觉焦点需人工补充复核")
 
     budget = _budget(needs_profile) or constraints.get("budget") or {}
     if not budget.get("total_budget"):
@@ -106,9 +118,11 @@ def build_constraint_report(space_profile, needs_profile=None):
         },
         "critical_missing": _dedupe_strings(critical_missing),
         "layout_missing": _dedupe_strings(layout_missing),
+        "layout_degraded": _dedupe_strings(layout_degraded),
         "automation_boundaries": [
             "概念提案可以基于低风险空间事实和需求画像生成。",
-            "布局草案必须建立在门洞、结构边界和机电/湿区约束已知的前提上。",
+            "布局草案必须建立在门洞、结构边界和机电/湿区约束已知的前提上；"
+            "采光面未知时按降级模式生成并明确标注，不伪造窗位/朝向判断。",
             "施工级图纸不属于当前 MVP 自动生成范围，必须由设计师基于原始图纸复核。",
         ],
     }
@@ -167,6 +181,14 @@ def explain_blocked_module(gate, module):
     return []
 
 
+def explain_degraded_module(gate, module):
+    """Return the degraded-mode record for a module allowed with degradation."""
+    for item in (gate or {}).get("degraded") or []:
+        if item.get("module") == module:
+            return item
+    return None
+
+
 def _decide_concept_package(space_profile, needs_profile, allowed, blocked):
     reasons = []
     if not _ready_for(space_profile, "concept_package"):
@@ -176,7 +198,7 @@ def _decide_concept_package(space_profile, needs_profile, allowed, blocked):
     _allow_or_block("concept_package", reasons, allowed, blocked)
 
 
-def _decide_layout_draft(space_profile, needs_profile, constraint_report, allowed, blocked):
+def _decide_layout_draft(space_profile, needs_profile, constraint_report, allowed, blocked, degraded=None):
     reasons = []
     if not _ready_for(space_profile, "layout_draft"):
         reasons.extend(_readiness_reasons(space_profile, "空间对象不足以生成布局草案"))
@@ -184,6 +206,17 @@ def _decide_layout_draft(space_profile, needs_profile, constraint_report, allowe
         reasons.extend(_readiness_reasons(needs_profile, "业主需求不足以支撑布局取舍"))
     reasons.extend(constraint_report.get("layout_missing") or [])
     _allow_or_block("layout_draft", reasons, allowed, blocked)
+    # 降级模式（draft_degraded）：硬事实（门洞/结构/机电）齐全但缺采光面时，
+    # 布局草案降级生成并明确标注，不再整体拦截。缺门洞几何仍走上面的拦截。
+    if not reasons and degraded is not None:
+        degraded_reasons = constraint_report.get("layout_degraded") or []
+        if degraded_reasons:
+            degraded.append({
+                "module": "layout_draft",
+                "label": MODULE_LABELS["layout_draft"],
+                "mode": "draft_degraded",
+                "reasons": _dedupe_strings(degraded_reasons),
+            })
 
 
 def _decide_budget_estimate(space_profile, needs_profile, allowed, blocked):

@@ -18,7 +18,7 @@ import math
 import os
 
 from core.ai_client import get_client
-from core.automation_gate import explain_blocked_module
+from core.automation_gate import explain_blocked_module, explain_degraded_module
 
 
 SCHEMA_VERSION = "layout_draft.v1"
@@ -69,6 +69,23 @@ def build_layout_draft(space_profile, needs_profile, gate=None):
 
     draft = _build_deterministic_draft(space_profile, needs_profile, room_facts)
 
+    # 降级模式（draft_degraded）：闸门标记或事实上无窗时，草案明确标注
+    # "采光面未知"，不伪造朝向/窗位判断。缺门洞几何在上面已被拦截。
+    degraded_info = explain_degraded_module(gate, "layout_draft") if gate else None
+    has_windows = any(op["kind"] == "window"
+                      for room in room_facts for wall in room["walls"]
+                      for op in wall["openings"])
+    if not has_windows:
+        draft["layout_mode"] = "draft_degraded"
+        draft["degraded_reasons"] = (degraded_info or {}).get("reasons") or [
+            "缺少窗户/采光面位置"]
+        draft["assumptions"].insert(0, _assumption(
+            "采光面未知，本布局草案为降级模式（draft_degraded）：布局未考虑朝向与窗位，"
+            "采光、通风与视觉焦点需人工补充窗户事实后重新深化，当前版本仅用于讨论"
+            "空间关系与家具尺度。"))
+    else:
+        draft["layout_mode"] = "draft"
+
     client = get_client()
     if client.demo_mode:
         draft["demo"] = True
@@ -111,6 +128,12 @@ def build_layout_draft_package(space_profile, needs_profile, gate=None, output_d
 def render_layout_summary(draft):
     """Human-readable markdown summary of the layout draft."""
     lines = ["# 布局草案摘要（M4，供设计师讨论与复核）", ""]
+    if draft.get("layout_mode") == "draft_degraded":
+        lines.append("> ⚠️ **降级模式（draft_degraded）**：采光面未知，布局未考虑朝向/窗位，"
+                     "采光、通风与视觉焦点需人工补充窗户事实后重新深化。")
+        for reason in draft.get("degraded_reasons") or []:
+            lines.append("> - %s" % reason)
+        lines.append("")
     facts = draft.get("source_facts") or {}
     project = draft.get("project") or {}
     lines.append(
@@ -246,6 +269,7 @@ def _attach_opening(facts, item, kind):
             "connects_to": item.get("connects_to") or "",
             "orientation": orientation,
             "span_mm": None,
+            "door_type": item.get("door_type") or item.get("type"),
         })
         return
     # CAD-style segment: {"start": [x, y], "end": [x, y]}
@@ -282,6 +306,7 @@ def _attach_opening(facts, item, kind):
         "connects_to": "",
         "orientation": "",
         "span_mm": [int(span[0]), int(span[1])],
+        "door_type": item.get("door_type"),
     })
 
 

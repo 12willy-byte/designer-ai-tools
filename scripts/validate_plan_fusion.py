@@ -92,8 +92,25 @@ def _check_real_fusion(structure, furnished):
         _fail("复合空间冲突应取结构图值 63.14㎡")
 
     filtered = fused["fusion"]["filtered_furniture_rings"]
-    if stats.get("filtered", 0) < 3 or len(filtered) < 3:
-        _fail("家具假环剔除数量不足：%s" % stats.get("filtered"))
+    # 家具假环剔除按端到端口径计数：读入层物理下限/浮动单线过滤
+    # （removed_rooms）+ 融合层重叠分析剔除（filtered_furniture_rings）。
+    # 读入层提前剔除后，融合层剔除数相应减少，合计口径不回退。
+    reader_removed = len(structure.get("removed_rooms") or []) + \
+        len(furnished.get("removed_rooms") or [])
+    total_filtered = stats.get("filtered", 0) + reader_removed
+    if total_filtered < 3 or stats.get("filtered", 0) + len(filtered) < 2:
+        _fail("家具假环剔除数量不足：融合层 %s + 读入层 %s"
+              % (stats.get("filtered"), reader_removed))
+    # 最终房间清单不得含净宽 <1m 的假房间（物理下限）
+    for room in fused["detected_rooms"]:
+        pts = [(p["x"], p["y"]) for p in room.get("floor_points") or []]
+        if len(pts) < 3:
+            continue
+        w = max(p[0] for p in pts) - min(p[0] for p in pts)
+        h = max(p[1] for p in pts) - min(p[1] for p in pts)
+        if min(w, h) < 1000.0:
+            _fail("融合结果含净宽 <1m 的假房间：%s（%.0fx%.0f）"
+                  % (room.get("name"), w, h))
     if not fused["fusion"]["zone_subdivisions"]:
         _fail("平面图厨房应识别为复合空间同名分区（zone_subdivision）")
 

@@ -74,6 +74,9 @@ def read_pdf_plan(pdf_path, scale=None, page_number=0):
         "door_arcs": [],
         "door_details": [],
         "removed_doors": [],
+        "removed_rooms": [],
+        "furniture_lines": {"count": 0, "segments": [],
+                            "note": "未与墙体网络连接的未配对单线（家具/标注轮廓）。"},
         "confidence": 0.0,
         "limitations": [],
         "pdf": {
@@ -228,25 +231,63 @@ def read_pdf_plan(pdf_path, scale=None, page_number=0):
     base["jamb_tick_gaps"] = result.get("tick_gaps") or []
     base["pdf"]["unclassified_segment_count"] = result["unclassified_count"]
     base["limitations"].extend(result["notes"])
+    # 家具/标注浮动单线留痕：疑似家具/标注轮廓标记在此，供闭环过滤与复核。
+    floating_singles = result.get("floating_singles") or []
+    base["furniture_lines"] = {
+        "count": len(floating_singles),
+        "segments": [(round(x1, 1), round(y1, 1), round(x2, 1), round(y2, 1))
+                     for x1, y1, x2, y2 in floating_singles],
+        "note": "未接入墙体网络的未配对单线（疑似家具/陈设/标注轮廓）："
+                "由它们封口的洞口需门扇/窗符号佐证，由它们主导的闭环已按"
+                "家具线过滤剔除（见 removed_rooms），留痕供复核。",
+    }
 
-    # 缝隙假房间过滤：双线墙未配对残余、符号描边会闭合成细条小环，
-    # 按最短边/面积下限剔除；标注线与墙围成的环会被标注数字命名，
-    # 纯数字命名的"房间"一并剔除（仅在校准后按 mm 判断）。
+    # 假房间过滤（校准后按 mm 判断），逐级留痕：
+    # 1) 纯数字命名的环：尺寸标注线与墙围成，剔除；
+    # 2) 细条/微小环（最短边 <450mm 或面积 <1㎡）：墙缝/符号描边，剔除；
+    # 3) 物理下限：净宽 <1m 的闭环不可能是房间（净宽 <1.5m 的窄带还需
+    #    看边界构成，实测真假混叠，不做覆盖率剔除以免误杀真实走廊）；
+    # 4) 家具描边：面积 <3㎡ 且边界 ≥50% 为未配对浮动单线（家具/标注）。
+    # 判别信号是边界浮动单线占比——真实小房间的边界是墙中线/结构单线。
+    # 剔除全部留痕 removed_rooms。
     if calibrated:
+        single_segs = floating_singles  # 覆盖率只看疑似家具/标注的浮动单线
         kept = []
+        removed_rooms = []
         dropped_slits = 0
         dropped_numeric = 0
         for room in rooms:
             name = (room.get("name") or "").strip()
-            if re.fullmatch(r"\d{3,5}", name):
-                dropped_numeric += 1
-                continue
             pts = [(p["x"], p["y"]) for p in room.get("floor_points") or []]
+            w = d = 0.0
             if pts:
                 w = max(p[0] for p in pts) - min(p[0] for p in pts)
                 d = max(p[1] for p in pts) - min(p[1] for p in pts)
+            if re.fullmatch(r"\d{3,5}", name):
+                dropped_numeric += 1
+                removed_rooms.append({
+                    "name": name, "area_m2": room.get("area_m2"),
+                    "bbox_mm": [round(w), round(d)],
+                    "reasons": ["以尺寸标注数字命名：标注线与墙体围成的闭环，不是房间"],
+                })
+                continue
+            if pts:
                 if min(w, d) < 450.0 or room.get("area_m2", 0) < 1.0:
                     dropped_slits += 1
+                    removed_rooms.append({
+                        "name": name or "未命名", "area_m2": room.get("area_m2"),
+                        "bbox_mm": [round(w), round(d)],
+                        "reasons": ["细条/微小闭环（最短边 <450mm 或面积 <1㎡），"
+                                    "多为墙缝或符号描边"],
+                    })
+                    continue
+                reasons = _furniture_room_reasons(room, w, d, single_segs, snap)
+                if reasons:
+                    removed_rooms.append({
+                        "name": name or "未命名", "area_m2": room.get("area_m2"),
+                        "bbox_mm": [round(w), round(d)],
+                        "reasons": reasons,
+                    })
                     continue
             kept.append(room)
         if dropped_slits:
@@ -257,6 +298,16 @@ def read_pdf_plan(pdf_path, scale=None, page_number=0):
             base["limitations"].append(
                 f"{dropped_numeric} 个由尺寸标注线与墙体围成的闭环（以标注数字命名）"
                 "已从房间清单剔除。")
+        furniture_drops = [r for r in removed_rooms
+                           if any("单线" in reason or "净宽" in reason
+                                  for reason in r["reasons"])]
+        if furniture_drops:
+            base["limitations"].append(
+                f"{len(furniture_drops)} 个闭环低于房间物理下限或边界主要由未配对单线"
+                "（家具/标注轮廓）构成，已从房间清单剔除并留痕（removed_rooms）："
+                + "、".join(f"{r['name']}（{r['area_m2']}㎡）" for r in furniture_drops)
+                + "。")
+        base["removed_rooms"] = removed_rooms
         rooms = kept
 
     # 开敞空间命名：按房间名文字的实际落点重命名；一个闭环内有多个房间名
@@ -267,17 +318,26 @@ def read_pdf_plan(pdf_path, scale=None, page_number=0):
             f"{composite_count} 个开敞复合空间（一个闭环内含多个房间名，如客餐厅一体）："
             "按文字落点标注为复合空间并给出逻辑分区（zones），未伪造物理隔墙。")
 
-    # 命名诚实化（PDF 路径）：
-    # 1) 环内无房间名文字、且最近的房间名文字在 2500mm 以外的闭环，
-    #    改名为"未命名空间"——最近文字命名在远处会张冠李戴（如把阳台条带
-    #    命名为隔壁卧室）；
-    # 2) 同名闭环按面积降序编号（卧室、卧室2……）：下游空间画像按名字
+    # 命名诚实化（PDF 路径）——命名环内优先：
+    # 1) 落在闭环内部的房间名文字拥有该环的绝对命名权（见上面的
+    #    _relabel_rooms_by_inner_texts）；环外文字只能兜底，且必须未被
+    #    任何闭环占用——否则环外名字会被墙缝条带/家具碎片"偷名"
+    #    （如"次卧"贴在 1m 宽条带上）；
+    # 2) 环内无文字时用 2500mm 内最近的未占用文字兜底命名，标
+    #    name_source=nearest_outside + 低置信；没有可用兜底文字或最近
+    #    文字超过 2500mm 的闭环命名为"未命名空间"；
+    # 3) 同名闭环按面积降序编号（卧室、卧室2……）：下游空间画像按名字
     #    合并同名房间，不编号会丢掉同名但独立的闭环（如两个卧室）。
-    renamed = _disambiguate_room_names(rooms, texts)
+    renamed, fallback_named = _disambiguate_room_names(rooms, texts)
     if renamed:
         base["limitations"].append(
-            f"{renamed} 个闭环没有落在其内部的房间名文字且最近文字超过 2500mm，"
-            "已命名为“未命名空间”而非沿用远处文字，需人工复核命名。")
+            f"{renamed} 个闭环没有落在其内部的房间名文字且没有 2500mm 内的"
+            "未占用兜底文字，已命名为“未命名空间”而非沿用远处/他环文字，需人工复核命名。")
+    if fallback_named:
+        base["limitations"].append(
+            f"{fallback_named} 个闭环内部没有房间名文字，已用 2500mm 内最近的"
+            "未被其他闭环占用的文字兜底命名（name_source=nearest_outside，低置信），"
+            "需人工复核命名。")
 
     # 虚拟桥接边界标记：含大洞口推断墙的房间降置信，供下游闸门区分。
     virtual_segments = result.get("virtual_segments") or []
@@ -642,15 +702,55 @@ def _classify_geometry(segs, calibrated, min_wall, gap_range, snap):
             f"识别到双线墙表达：{len(centerlines)} 段墙由平行双线合并为墙中线，"
             "墙缝不再参与房间闭环。")
 
-    # 洞口检测的基底：双线模式用「墙中线 + 长单线」——中线保证门洞不被
-    # 双面线重复计数，长单线覆盖单线绘制的外墙/栏板（真实图纸常混用）。
+    # 未配对长单线分级（家具线条过滤的证据通道）：
+    # 含家具的布置图里，床/沙发/柜体轮廓和尺寸标注线都是未配对单线。
+    # 判别依据是与墙体网络的连接性（传递闭包）：真墙端点必然搭接到墙体
+    # 网络——内隔墙常被设计师画成单线，它们彼此相连成网、最终接到墙中
+    # 线上；家具/标注轮廓则是孤立的簇。从墙中线出发逐级吸收触碰网络的
+    # 单线，直到收敛：
+    # - 结构单线（接入墙体网络）：按墙体证据对待；
+    # - 浮动单线（始终孤立，疑似家具/标注）：仍参与几何解析（真实图纸的
+    #   散线墙也靠它们闭合），但全部留痕（furniture_lines），且由它们
+    #   封口的洞口必须另有门扇/窗符号佐证（见 needs_proof 侧翼规则）、
+    #   由它们主导的闭环按家具线过滤规则剔除（_furniture_room_reasons）。
+    # 单线图纸（无双线墙）不启用本分级。
+    structural_singles = []
+    floating_singles = []
     if double_line_mode:
-        gap_source = list(centerlines)
+        candidates = []
         for i, s in enumerate(axis_segs):
             if s[8] or i in merged_idx:
                 continue
-            if s[3] - s[2] >= min_wall:
-                gap_source.append(s)
+            if s[3] - s[2] < min_wall:
+                continue
+            candidates.append(s)
+        network = list(centerlines)
+        remaining = list(candidates)
+        changed = True
+        while changed:
+            changed = False
+            keep = []
+            for s in remaining:
+                if _touches_wall_network(s, network, snap * 2):
+                    structural_singles.append(s)
+                    network.append(s)
+                    changed = True
+                else:
+                    keep.append(s)
+            remaining = keep
+        floating_singles = remaining
+        if floating_singles:
+            notes.append(
+                f"{len(floating_singles)} 条未接入墙体网络的未配对单线（疑似家具/陈设/"
+                "标注轮廓）已标记留痕（furniture_lines）：由它们封口的洞口需门扇/窗符号"
+                "佐证，由它们主导的闭环按家具线过滤剔除。")
+
+    # 洞口检测的基底：双线模式用「墙中线 + 全部长单线」——中线保证门洞不被
+    # 双面线重复计数，单线覆盖单线绘制的外墙/栏板（真实图纸常混用）；
+    # 浮动单线仍在基底中（散线墙靠它们闭合），家具缝隙洞口由侧翼证据
+    # 规则（needs_proof）拦截。
+    if double_line_mode:
+        gap_source = list(centerlines) + structural_singles + floating_singles
     else:
         gap_source = axis_segs
 
@@ -682,6 +782,15 @@ def _classify_geometry(segs, calibrated, min_wall, gap_range, snap):
         runs = _merge_runs(sorted((s[2], s[3]) for s in cluster), snap)
         for (a1, b1), (a2, b2) in zip(runs, runs[1:]):
             gap = a2 - b1
+            # 洞口侧翼来源：缺口两缘分别由哪类线段封口。两缘都是未配对单线
+            # （而非墙中线）时，这个"洞口"其实是两件家具/符号之间的缝隙，
+            # 即使所在共线簇里别处有墙中线，也必须有门扇/窗符号佐证才采信。
+            left_flank = next((s for s in cluster if abs(s[3] - b1) <= snap), None)
+            right_flank = next((s for s in cluster if abs(s[2] - a2) <= snap), None)
+            flanked_by_singles = (
+                left_flank is not None and right_flank is not None
+                and id(left_flank) not in centerline_ids
+                and id(right_flank) not in centerline_ids)
             if gap_range[0] <= gap <= gap_range[1]:
                 openings.append({
                     "axis": direction,
@@ -689,7 +798,7 @@ def _classify_geometry(segs, calibrated, min_wall, gap_range, snap):
                     "gap_start": b1,
                     "gap_end": a2,
                     "width": gap,
-                    "needs_proof": not has_center,
+                    "needs_proof": (not has_center) or flanked_by_singles,
                     "virtual": False,
                 })
             elif calibrated and has_center and _BALCONY_GAP_MM[0] < gap <= _BALCONY_GAP_MM[1]:
@@ -794,24 +903,25 @@ def _classify_geometry(segs, calibrated, min_wall, gap_range, snap):
     # 墙线输出 + 洞口桥接段（供闭环检测把房间封合）
     walls = []
     if double_line_mode:
-        # 双线模式：墙 = 合并出的中线 + 未配对的长单线（单线外墙/栏板/标注线都会
-        # 进来——标注线造成的数值命名假房间和细条环在闭环后统一过滤；
+        # 双线模式：墙 = 合并出的中线 + 全部未配对长单线（单线外墙/栏板/
+        # 散线内墙与家具/标注线都会进来——家具/标注主导的假房间在闭环后
+        # 按物理下限与单线占比过滤，数值命名假房间与细条环一并剔除；
         # 中线短门槛段也保留，否则相邻门洞间的墙垛会漏）。
         min_center = 100.0 if calibrated else 8.0
         for c in centerlines:
             if c[3] - c[2] >= min_center:
                 walls.append((c[4], c[5], c[6], c[7], 120))
         singles = 0
-        for i, s in enumerate(axis_segs):
-            if s[8] or i in merged_idx:
+        for s in structural_singles + floating_singles:
+            if s[8]:
                 continue
-            if s[3] - s[2] >= min_wall:
-                walls.append((s[4], s[5], s[6], s[7], 120))
-                singles += 1
+            walls.append((s[4], s[5], s[6], s[7], 120))
+            singles += 1
         if singles:
             notes.append(
-                f"双线墙模式：另计入 {singles} 条未配对长单线（单线墙体/标注线/家具轮廓），"
-                "由此产生的假房间已在闭环后按形态与命名过滤，仍需人工复核。")
+                f"双线墙模式：另计入 {singles} 条未配对长单线（单线墙体/栏板/"
+                "散线内墙，含疑似家具/标注线——其主导的假房间已在闭环后过滤），"
+                "仍需人工复核。")
     else:
         for s in axis_segs:
             if s[8]:
@@ -855,9 +965,28 @@ def _classify_geometry(segs, calibrated, min_wall, gap_range, snap):
         "windows": windows,
         "virtual_segments": virtual_segments,
         "tick_gaps": tick_gaps,
+        # 全部未配对长单线（结构+浮动）：供闭环边界单线占比计算；
+        # floating_singles 单列留痕（未参与洞口/闭环的家具/标注线）。
+        "single_segments": [(s[4], s[5], s[6], s[7])
+                            for s in structural_singles + floating_singles if not s[8]],
+        "floating_singles": [(s[4], s[5], s[6], s[7])
+                             for s in floating_singles if not s[8]],
         "unclassified_count": max(0, unclassified),
         "notes": notes,
     }
+
+
+def _touches_wall_network(single, centerlines, tol):
+    """单线任一端点是否落在某墙中线上（T 型搭接或端点相接）。
+
+    真墙（含单线绘制的栏板/隔墙）端点必然与其他墙体相接；家具与标注
+    轮廓整体漂浮在墙网之外。这是区分结构单线与家具线的几何依据。
+    """
+    for px, py in ((single[4], single[5]), (single[6], single[7])):
+        for c in centerlines:
+            if _point_seg_distance(px, py, (c[4], c[5], c[6], c[7])) <= tol:
+                return True
+    return False
 
 
 def _align_breakpoints(axis_segs, offset_max, snap):
@@ -1322,12 +1451,26 @@ def _relabel_rooms_by_inner_texts(rooms, texts):
 
 
 def _disambiguate_room_names(rooms, texts, far_threshold=2500.0):
-    """同名编号 + 远距离命名诚实化。返回被改为"未命名空间"的数量。"""
+    """同名编号 + 命名环内优先/环外兜底诚实化。返回 (未命名数, 兜底命名数)。
+
+    环内优先原则：落在任一闭环内部的房间名文字被该环"占用"，不再参与
+    其他环的就近命名——就近匹配曾让环外名字贴到墙缝条带/家具碎片上
+    （名实不符）。环内无文字的闭环只能用未被占用的文字兜底，且标低置信。
+    """
     name_texts = [t for t in texts
                   if any(k in (t.get("text") or "") for k in _PDF_ROOM_KEYWORDS)]
-    unnamed = 0
+    polys = []
     for room in rooms:
-        poly = [(p["x"], p["y"]) for p in room.get("floor_points") or []]
+        polys.append([(p["x"], p["y"]) for p in room.get("floor_points") or []])
+    claimed = set()  # 落在某闭环内部的文字：被该环占用，不再外借命名
+    for t in name_texts:
+        for poly in polys:
+            if len(poly) >= 3 and _point_in_polygon(t["x"], t["y"], poly):
+                claimed.add(id(t))
+                break
+    unnamed = 0
+    fallback = 0
+    for room, poly in zip(rooms, polys):
         if len(poly) < 3 or not name_texts:
             continue
         has_inner = any(_point_in_polygon(t["x"], t["y"], poly) for t in name_texts)
@@ -1335,10 +1478,23 @@ def _disambiguate_room_names(rooms, texts, far_threshold=2500.0):
             continue
         cx = sum(p[0] for p in poly) / len(poly)
         cy = sum(p[1] for p in poly) / len(poly)
-        nearest = min(math.hypot(t["x"] - cx, t["y"] - cy) for t in name_texts)
-        if nearest > far_threshold:
+        free = [t for t in name_texts if id(t) not in claimed]
+        if not free:
             room["name"] = "未命名空间"
             unnamed += 1
+            continue
+        nearest_t = min(free, key=lambda t: math.hypot(t["x"] - cx, t["y"] - cy))
+        nearest = math.hypot(nearest_t["x"] - cx, nearest_t["y"] - cy)
+        if nearest > far_threshold:
+            room["name"] = "未命名空间"
+            room.pop("name_source", None)
+            room.pop("name_confidence", None)
+            unnamed += 1
+        else:
+            room["name"] = nearest_t["text"]
+            room["name_source"] = "nearest_outside"   # 环外兜底命名：低置信，需复核
+            room["name_confidence"] = "low"
+            fallback += 1
     # 同名闭环按面积降序编号（rooms 已是面积降序）
     counts = {}
     for room in rooms:
@@ -1351,7 +1507,65 @@ def _disambiguate_room_names(rooms, texts, far_threshold=2500.0):
             seen[name] = seen.get(name, 0) + 1
             if seen[name] > 1:
                 room["name"] = f"{name}{seen[name]}"
-    return unnamed
+    return unnamed, fallback
+
+
+def _furniture_room_reasons(room, w, d, single_segs, snap):
+    """家具线条/物理下限检查（家具线过滤的闭环级兜底）。返回剔除理由（空=保留）。
+
+    判别信号（只用能干净区分真假的证据，宁可少剔也不错杀）：
+    - 物理下限：房间净宽 <1m 不可能是任何功能房间（条带/墙缝/符号描边）；
+    - 面积 <3㎡ 且边界 ≥50% 由未配对浮动单线构成：家具描边小环
+      （柜体/洁具轮廓；真实小房间的边界是墙中线/结构单线，浮动线占比低）。
+    1.0~1.5m 窄带（走廊/凹位）单线占比真假混叠（实测真走廊 0.30~0.36、
+    假条带 0.21），不做覆盖率剔除，避免误杀真实走廊。
+    """
+    reasons = []
+    min_dim = min(w, d)
+    area = room.get("area_m2", 0) or 0
+    if min_dim < 1000.0:
+        reasons.append(
+            "净宽 %.2fm 低于 1m 物理下限：净宽 <1.5m 的闭环不是房间"
+            "（多为墙缝条带或家具轮廓）" % (min_dim / 1000.0))
+        return reasons
+    cov = _boundary_single_coverage(room, single_segs, snap)
+    if area < 3.0 and cov >= 0.5:
+        reasons.append(
+            "面积 %.2f㎡ 且边界 %.0f%% 为未配对浮动单线（家具/标注轮廓）："
+            "家具描边小环" % (area, cov * 100))
+    return reasons
+
+
+def _boundary_single_coverage(room, single_segs, snap):
+    """房间边界边长中被未配对单线覆盖的比例（按长度计）。"""
+    if not single_segs:
+        return 0.0
+    pts = [(p["x"], p["y"]) for p in room.get("floor_points") or []]
+    total = 0.0
+    covered = 0.0
+    for i in range(len(pts)):
+        ax, ay = pts[i]
+        bx, by = pts[(i + 1) % len(pts)]
+        elen = math.hypot(bx - ax, by - ay)
+        if elen <= 0:
+            continue
+        total += elen
+        edge_cov = 0.0
+        for x1, y1, x2, y2 in single_segs:
+            if abs(ay - by) <= snap and abs(y1 - y2) <= snap:
+                if abs((ay + by) / 2 - (y1 + y2) / 2) > snap * 2:
+                    continue
+                ov = min(max(ax, bx), max(x1, x2)) - max(min(ax, bx), min(x1, x2))
+            elif abs(ax - bx) <= snap and abs(x1 - x2) <= snap:
+                if abs((ax + bx) / 2 - (x1 + x2) / 2) > snap * 2:
+                    continue
+                ov = min(max(ay, by), max(y1, y2)) - max(min(ay, by), min(y1, y2))
+            else:
+                continue
+            if ov > 0:
+                edge_cov += ov
+        covered += min(edge_cov, elen)
+    return covered / total if total else 0.0
 
 
 def _mark_virtual_boundaries(rooms, virtual_segments, snap):
@@ -1409,6 +1623,8 @@ def _overall_confidence(calibrated, rooms, doors, windows, has_virtual=False):
 # ---------------------------------------------------------------- 门洞语义分级
 
 _DOOR_WIDTH_MM = 1300.0        # 门洞宽上限（超过按 opening）
+_DOOR_LEAF_MAX_MM = 1200.0     # 单扇室内门物理上限：超过此宽度的"门"物理上不
+                               # 成立（推拉门/阳台口/并门误判），弧线佐证不晋升 door
 _BOUNDARY_NEAR_MM = 400.0      # 洞口贴近房间边界的判定距离
 _BOUNDARY_FAR_MM = 600.0       # 超过此距离不邻接任何空间：疑似标注线噪声
 _ARC_MATCH_MM = 700.0          # 门扇弧线与洞口的匹配距离
@@ -1479,7 +1695,9 @@ def build_door_details(doors, door_arcs, rooms, bounds, calibrated=True,
 
     每个洞口产出 {type, start, end, width_mm, exterior, connects, evidence,
     confidence}：
-    - 有门扇弧线佐证 → door（0.75）；
+    - 有门扇弧线佐证且宽度 ≤1200mm（单扇室内门物理上限）→ door（0.75）；
+    - 有弧线但宽度 >1200mm：物理上不可能是普通室内门（推拉门/阳台口/
+      相邻洞口并入/家具弧误判）→ 降级 opening（0.4），留痕 wide_arc_downgrade；
     - 无弧线但宽度在门洞量级且邻接空间 → opening（0.5，诚实降级）；
     - 宽度超过门洞量级 → opening（0.45）；
     - 不邻接任何空间（>600mm）→ unverified（0.3，疑似标注线/符号间隙，
@@ -1510,8 +1728,13 @@ def build_door_details(doors, door_arcs, rooms, bounds, calibrated=True,
         if (round(x1), round(y1), round(x2), round(y2)) in tick_set:
             evidence.append("jamb_ticks")
 
-        if arc:
+        if arc and width <= _DOOR_LEAF_MAX_MM:
             dtype, conf = "door", 0.75
+        elif arc:
+            # 门宽物理先验：>1.2m 的"门"物理上不成立——弧线来自家具或相邻
+            # 洞口被过度合并，弧线佐证不再晋升为 door，诚实降级并留痕。
+            dtype, conf = "opening", 0.4
+            evidence.append("wide_arc_downgrade")
         elif not connects:
             nearest = _nearest_room_distance(x1, y1, x2, y2, rooms)
             if nearest > _BOUNDARY_FAR_MM:

@@ -1,0 +1,242 @@
+#!/usr/bin/env python3
+"""含家具布置图泛化改进（四项普适改进）离线验收。
+
+背景：第二套真实图纸（露露姨出租房单张含家具布置图）暴露四个结构性差距：
+1. 家具线条过滤：未配对浮动单线（家具/标注轮廓）形成假闭环——净宽 <1m
+   的条带必须剔除并留痕，且最终房间清单不得有净宽 <1m 的"房间"；
+2. 命名环内优先：环内名字绝对优先，环外兜底命名必须未被其他闭环占用，
+   且标 name_source=nearest_outside + 低置信；
+3. 门宽物理先验：宽度 >1.2m 的洞口即使有弧线佐证也不得判为 door
+   （推拉门/阳台口/并门误判），降级 opening 并留痕 wide_arc_downgrade；
+4. 无窗降级模式：门洞/结构/机电齐全但缺采光面时，闸门放行布局草案并
+   标记 draft_degraded；缺门洞几何仍拦截。
+
+同时锁定罗菁深圳回归基线（比例/房间/门/窗不得回退）与预算门分项口径
+（超宽/未证实洞口不计入室内门工程量）。
+
+运行：AI_DEMO_MODE=1 python3 scripts/validate_furnished_generalization.py
+"""
+import json
+import os
+import sys
+import tempfile
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ROOT)
+
+SAMPLE_DIR = os.path.join(ROOT, "resources", "real_samples")
+LULUYI_PDF = os.path.join(SAMPLE_DIR, "露露姨出租房平面.pdf")
+STRUCTURE_PDF = os.path.join(SAMPLE_DIR, "罗菁深圳原始图.pdf")
+FURNISHED_PDF = os.path.join(SAMPLE_DIR, "罗菁深圳平面.pdf")
+
+
+def _fail(message):
+    raise SystemExit("validate_furnished_generalization FAILED: " + message)
+
+
+def _room_dims(room):
+    pts = [(p["x"], p["y"]) for p in room.get("floor_points") or []]
+    if len(pts) < 3:
+        return 0, 0
+    w = max(p[0] for p in pts) - min(p[0] for p in pts)
+    h = max(p[1] for p in pts) - min(p[1] for p in pts)
+    return w, h
+
+
+def _check_luluyi(plan):
+    """露露姨单布置图：四项改进的前三项 + 比例零漂移。"""
+    if not plan.get("accepted"):
+        _fail("露露姨样本未被接受")
+    meta = plan["pdf"]
+    if abs(meta["pt_to_mm"] - 6.4458) / 6.4458 > 0.01:
+        _fail("露露姨比例校准漂移：%s" % meta["pt_to_mm"])
+
+    # 1) 家具线条过滤
+    rooms = plan["detected_rooms"]
+    for room in rooms:
+        w, h = _room_dims(room)
+        if w and h and min(w, h) < 1000.0:
+            _fail("房间清单仍含净宽 <1m 的假房间：%s（%.0fx%.0f）"
+                  % (room.get("name"), w, h))
+    removed = plan.get("removed_rooms") or []
+    if len(removed) < 2:
+        _fail("露露姨应至少剔除 2 个假闭环（墙缝/家具条带），got %d" % len(removed))
+    if not all(r.get("reasons") for r in removed):
+        _fail("剔除的假房间必须带理由留痕")
+    if (plan.get("furniture_lines") or {}).get("count", 0) <= 0:
+        _fail("含家具布置图应标记出浮动单线（furniture_lines）")
+    names = {r.get("name") for r in rooms}
+    if "厨房" not in names or "主卧" not in names:
+        _fail("厨房/主卧必须保留且名实相符，got %s" % sorted(names))
+    usable = {"客厅", "厨房", "主卧", "次卧", "客卫"} & names
+    if len(usable) < 3:
+        _fail("可用房间（名实相符+低置信兜底）应 ≥3/7，got %s" % sorted(usable))
+
+    # 2) 命名环内优先：环外兜底命名必须低置信留痕
+    fallback_named = [r for r in rooms if r.get("name_source") == "nearest_outside"]
+    for room in fallback_named:
+        if room.get("name_confidence") != "low":
+            _fail("环外兜底命名必须标低置信：%s" % room.get("name"))
+    lim = "；".join(plan.get("limitations") or [])
+    if "兜底命名" not in lim and "未命名空间" not in lim:
+        _fail("命名诚实化 limitation 缺失")
+
+    # 3) 门宽物理先验：不得有 >1.2m 的 door
+    details = plan.get("door_details") or []
+    wide_doors = [d for d in details
+                  if d.get("type") == "door" and (d.get("width_mm") or 0) > 1200]
+    if wide_doors:
+        _fail("仍有超宽假门判为 door：%s"
+              % [(d["id"], d["width_mm"]) for d in wide_doors])
+    downgraded = [d for d in details if "wide_arc_downgrade" in (d.get("evidence") or [])]
+    if len(downgraded) < 4:
+        _fail("露露姨应有 ≥4 个超宽洞口被物理先验降级，got %d" % len(downgraded))
+    if any(d.get("type") != "opening" for d in downgraded):
+        _fail("超宽降级洞口必须判为 opening")
+    return {
+        "pt_to_mm": meta["pt_to_mm"],
+        "rooms": {r.get("name"): r.get("area_m2") for r in rooms},
+        "removed_rooms": len(removed),
+        "furniture_lines": plan["furniture_lines"]["count"],
+        "door_details": len(details),
+        "door_typed": sum(1 for d in details if d.get("type") == "door"),
+        "wide_downgraded": len(downgraded),
+        "fallback_named": [r.get("name") for r in fallback_named],
+    }
+
+
+def _check_luojing_regression(structure, furnished, fused):
+    """罗菁基线回归：比例/房间/门/窗逐项不得回退。"""
+    if abs(structure["pdf"]["pt_to_mm"] - 7.20777) / 7.20777 > 0.002:
+        _fail("罗菁原始图比例漂移：%s" % structure["pdf"]["pt_to_mm"])
+    if len(structure["detected_rooms"]) != 9:
+        _fail("罗菁原始图房间数应为 9，got %d" % len(structure["detected_rooms"]))
+    rooms = fused.get("detected_rooms") or []
+    if len(rooms) != 10:
+        _fail("罗菁融合房间数应为 10（含主卧 plan_only），got %d" % len(rooms))
+    master = next((r for r in rooms if r.get("name") == "主卧"), None)
+    if not master or master.get("source") != "plan_only":
+        _fail("主卧必须保持 plan_only 并入")
+    stats = (fused.get("fusion") or {}).get("door_fusion", {}).get("stats", {})
+    if stats.get("converged_total") != 13:
+        _fail("罗菁门收敛应为 13，got %s" % stats.get("converged_total"))
+    if (stats.get("door_dual", 0) + stats.get("door_single", 0)
+            + stats.get("door_plan_only", 0)) != 6:
+        _fail("罗菁 door 应为 6，got %s" % stats)
+    if stats.get("opening") != 7:
+        _fail("罗菁 opening 应为 7，got %s" % stats.get("opening"))
+    if fused.get("window_count") != 10:
+        _fail("罗菁窗应为 10，got %s" % fused.get("window_count"))
+    # 门宽物理先验对罗菁同样生效：融合后不得有 >1.2m 的 door
+    for det in fused.get("door_details") or []:
+        if det.get("type") == "door" and (det.get("width_mm") or 0) > 1200:
+            _fail("罗菁融合出现 >1.2m 的 door：%s" % det.get("width_mm"))
+    return {
+        "structure_scale": structure["pdf"]["pt_to_mm"],
+        "structure_rooms": len(structure["detected_rooms"]),
+        "fused_rooms": len(rooms),
+        "doors": stats.get("converged_total"),
+        "windows": fused.get("window_count"),
+    }
+
+
+def _check_degraded_gate():
+    """改进 4：缺窗降级放行、缺门洞仍拦截。"""
+    from core.automation_gate import build_automation_gate, explain_degraded_module
+    from core.needs_profile import build_needs_profile
+    from core.space_profile import build_space_profile
+
+    conditions = {
+        "project": {"name": "降级样例", "house_type": "两居室", "area_m2": 60},
+        "family": {"residents": "2人"},
+        "style": {"primary_style": "现代简约", "keywords": "清爽"},
+        "budget": {"total_budget": 100000},
+        "special_requirements": {"承重墙": "不可拆改", "上下水": "湿区不可移动"},
+    }
+    cad_plan = {
+        "source_type": "pdf_vector", "accepted": True, "confidence": 0.66,
+        "walls": [], "doors": [(0, 0, 900, 0)], "windows": [],
+        "door_details": [{
+            "id": "gap_0", "type": "door", "start": [0, 0], "end": [900, 0],
+            "width_mm": 900.0, "exterior": False, "connects": ["主卧"],
+            "evidence": ["wall_gap", "door_arc"], "confidence": 0.75,
+            "source": "structure",
+        }],
+        "detected_rooms": [
+            {"name": "主卧", "area_m2": 12.0,
+             "floor_points": [{"x": 0, "y": 0}, {"x": 4000, "y": 0},
+                              {"x": 4000, "y": 3000}, {"x": 0, "y": 3000}]},
+        ],
+        "bounds": (0, 0, 4000, 3000), "limitations": [],
+    }
+    space = build_space_profile(conditions, cad_plan=cad_plan)
+    needs = build_needs_profile(conditions, space_profile=space)
+    gate = build_automation_gate(space, needs)
+    if "layout_draft" not in gate["allowed"]:
+        _fail("缺窗但门洞/结构/机电齐全时，布局草案应降级放行而非拦截")
+    degraded = explain_degraded_module(gate, "layout_draft")
+    if not degraded or degraded.get("mode") != "draft_degraded":
+        _fail("闸门应标记 layout_draft 为 draft_degraded 降级模式")
+
+    from core.layout_draft import build_layout_draft
+    draft = build_layout_draft(space, needs, gate=gate)
+    if draft.get("status") != "draft":
+        _fail("降级模式下应生成布局草案，got %s" % draft.get("status"))
+    if draft.get("layout_mode") != "draft_degraded":
+        _fail("草案应标记 layout_mode=draft_degraded")
+    text = json.dumps(draft.get("assumptions") or [], ensure_ascii=False)
+    if "采光面未知" not in text:
+        _fail("降级草案必须标注'采光面未知'假设")
+
+    # 缺门洞几何：仍拦截
+    cad_no_doors = dict(cad_plan, doors=[], door_details=[])
+    space2 = build_space_profile(conditions, cad_plan=cad_no_doors)
+    needs2 = build_needs_profile(conditions, space_profile=space2)
+    gate2 = build_automation_gate(space2, needs2)
+    if "layout_draft" in gate2["allowed"]:
+        _fail("缺门洞几何时布局草案必须仍被拦截")
+    return {"degraded_allowed": True, "no_doors_blocked": True}
+
+
+def _check_budget_door_rule():
+    """预算门分项口径：超宽/未证实洞口不计入室内门工程量。"""
+    from core.budget_estimate import _counts_as_interior_door
+    cases = [
+        ({"kind": "door", "door_type": "door", "width_mm": 800}, True),
+        ({"kind": "door", "door_type": "opening", "width_mm": 900}, True),
+        ({"kind": "door", "door_type": "opening", "width_mm": 3000}, False),
+        ({"kind": "door", "door_type": "unverified", "width_mm": 800}, False),
+        ({"kind": "door", "door_type": None, "width_mm": 800}, True),
+        ({"kind": "window", "door_type": None, "width_mm": 1500}, False),
+    ]
+    for op, expected in cases:
+        if _counts_as_interior_door(op) != expected:
+            _fail("门工程量口径错误：%s 应为 %s" % (op, expected))
+    return {"budget_door_rule": True}
+
+
+def main():
+    from core.pdf_plan_reader import read_pdf_plan
+    from core.plan_fusion import fuse_plans
+
+    if not (os.path.exists(LULUYI_PDF) and os.path.exists(STRUCTURE_PDF)
+            and os.path.exists(FURNISHED_PDF)):
+        _fail("真实样本缺失：resources/real_samples/")
+
+    luluyi = read_pdf_plan(LULUYI_PDF)
+    structure = read_pdf_plan(STRUCTURE_PDF)
+    furnished = read_pdf_plan(FURNISHED_PDF)
+    fused = fuse_plans(structure, furnished)
+
+    result = {
+        "ok": True,
+        "luluyi": _check_luluyi(luluyi),
+        "luojing_regression": _check_luojing_regression(structure, furnished, fused),
+        "degraded_gate": _check_degraded_gate(),
+        "budget": _check_budget_door_rule(),
+    }
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()
