@@ -111,6 +111,9 @@ def fuse_plans(structure_plan, furnished_plan,
     # ---------- 2/3. 匹配 + 交叉验证合并 ----------
     _merge_and_validate(fused, structure_plan, furnished_plan, s_rooms, alignment)
 
+    # ---------- 3.5 门语义跨图收敛 ----------
+    _fuse_doors(fused, structure_plan, furnished_plan, alignment)
+
     # ---------- 4. 输出收尾 ----------
     fused["limitations"] = list(fused.get("limitations") or []) + fusion.pop("limitations_out")
     n_consistent = fusion["stats"].get("consistent", 0)
@@ -589,6 +592,328 @@ def _merge_and_validate(fused, structure_plan, furnished_plan, s_rooms, alignmen
         limitations.append(
             "%d 个空间仅结构图有（平面图未闭合对应区域），保持结构图结果不变。"
             % stats["structure_only"])
+
+
+# ---------------------------------------------------------------- 门语义收敛
+
+# ---- 门收敛阈值 ----
+_DOOR_DUP_LINE_MM = 250.0      # 双线墙重复洞口：线距上限
+_DOOR_DUP_OVERLAP = 0.6        # 双线墙重复洞口：跨度重叠率
+_DOOR_ARC_TOL_MM = 750.0       # 门扇弧线与洞口的匹配距离
+_DOOR_FAR_MM = 600.0           # 距任何空间边界超过此值：标注线噪声
+_DOOR_WIDTH_MAX_MM = 1300.0    # 门洞宽上限
+_WINDOW_TICK_MIN_W_MM = 1200.0 # 窗槛短档洞口判窗的宽度下限
+_LARGE_OPENING_MM = 2000.0     # 超过此宽度：开敞连通口/飘窗面，不计入门集合
+
+
+def _fuse_doors(fused, structure_plan, furnished_plan, alignment):
+    """门语义跨图融合：结构图缺口 × 双图门扇弧线互证，收敛门集合。
+
+    输入证据：
+    - 结构图洞口（pdf_plan_reader 缺口启发式，噪声多但覆盖全）；
+    - 双图门扇弧线（内容流级提取的门符号：铰链+半径+门板端，最强语义）；
+    - 窗槛短档标记（jamb_ticks，窗的候选特征）；
+    - 融合后房间的边界邻接（连通房间）。
+
+    判定（诚实优先，宁可 opening 不硬判 door）：
+    - 双线墙重复洞口 → 剔除（removed_doors 留痕）；
+    - 距任何空间 >600mm 且无弧线 → 剔除（标注线/符号间隙）；
+    - 有门扇弧线佐证 → door；结构缺口+平面图弧线双源互证 0.85，
+      双图均有弧线 0.9，仅结构图弧线 0.8；
+    - 有窗槛短档且宽度≥1200 且无弧线 → 移入 windows（判窗留痕）；
+    - 其余保留为 opening（0.4–0.5），不冒充门；
+    - 仅平面图有弧线、结构图无对应缺口（如主卧门）→ plan_only 门 0.6，
+      需现场确认。
+    """
+    from core.pdf_plan_reader import (
+        _nearest_room_distance, arc_matches_gap, rooms_near_gap)
+
+    fusion = fused["fusion"]
+    transform = (alignment["scale"], alignment["rotation_deg"],
+                 *alignment["translation_mm"])
+    rooms = fused.get("detected_rooms") or []
+
+    # ---- 1) 证据准备：双图弧线统一到结构图坐标 ----
+    s_arcs = [dict(a, from_plan="structure")
+              for a in structure_plan.get("door_arcs") or []]
+    f_arcs = []
+    for arc in furnished_plan.get("door_arcs") or []:
+        moved = {"from_plan": "furnished",
+                 "radius_mm": round(arc["radius_mm"] * transform[0], 1),
+                 "sweep_deg": arc.get("sweep_deg")}
+        for key in ("hinge", "leaf_tip", "closed"):
+            pt = arc.get(key)
+            if pt:
+                rx, ry = _rotate(pt, transform[1])
+                moved[key] = (transform[0] * rx + transform[2],
+                              transform[0] * ry + transform[3])
+        f_arcs.append(moved)
+    all_arcs = s_arcs + f_arcs
+
+    s_details = structure_plan.get("door_details") or []
+    tick_lookup = set()
+    for det in s_details:
+        if "jamb_ticks" in (det.get("evidence") or []):
+            tick_lookup.add((round(det["start"][0]), round(det["start"][1]),
+                             round(det["end"][0]), round(det["end"][1])))
+
+    # ---- 2) 双线墙重复洞口去重 ----
+    gaps = []
+    for x1, y1, x2, y2 in structure_plan.get("doors") or []:
+        if abs(y2 - y1) <= abs(x2 - x1):
+            gaps.append({"axis": "H", "line": (y1 + y2) / 2,
+                         "lo": min(x1, x2), "hi": max(x1, x2),
+                         "seg": (x1, y1, x2, y2)})
+        else:
+            gaps.append({"axis": "V", "line": (x1 + x2) / 2,
+                         "lo": min(y1, y2), "hi": max(y1, y2),
+                         "seg": (x1, y1, x2, y2)})
+    removed = []
+    kept = []
+    for gap in gaps:
+        dup_of = None
+        for other in kept:
+            if other["axis"] != gap["axis"]:
+                continue
+            if abs(other["line"] - gap["line"]) > _DOOR_DUP_LINE_MM:
+                continue
+            overlap = min(other["hi"], gap["hi"]) - max(other["lo"], gap["lo"])
+            shorter = min(other["hi"] - other["lo"], gap["hi"] - gap["lo"])
+            if shorter > 0 and overlap / shorter >= _DOOR_DUP_OVERLAP:
+                dup_of = other
+                break
+        if dup_of is not None:
+            removed.append({
+                "start": [round(gap["seg"][0], 1), round(gap["seg"][1], 1)],
+                "end": [round(gap["seg"][2], 1), round(gap["seg"][3], 1)],
+                "reason": "与保留洞口平行重复（线距 %dmm、跨度重叠≥%d%%）："
+                          "双线墙两条面线各记一次洞口，剔除其一。"
+                          % (round(abs(dup_of["line"] - gap["line"])),
+                             round(_DOOR_DUP_OVERLAP * 100)),
+            })
+        else:
+            kept.append(gap)
+
+    # ---- 3) 弧线 → 最优缺口指派（一条弧只佐证一个缺口） ----
+    from core.pdf_plan_reader import arc_gap_distance
+    arc_best = {}  # arc_idx -> (distance, gap_idx)
+    for ai, arc in enumerate(all_arcs):
+        for gi, gap in enumerate(kept):
+            x1, y1, x2, y2 = gap["seg"]
+            if not arc_matches_gap(arc, x1, y1, x2, y2, tol=_DOOR_ARC_TOL_MM):
+                continue
+            dist = arc_gap_distance(arc, x1, y1, x2, y2)
+            if ai not in arc_best or dist < arc_best[ai][0]:
+                arc_best[ai] = (dist, gi)
+    gap_arcs = {}
+    for ai, (_dist, gi) in arc_best.items():
+        gap_arcs.setdefault(gi, []).append(ai)
+
+    # ---- 4) 逐缺口判定 ----
+    doors_out = []       # 收敛后的门/开口（rich records）
+    large_openings = []  # ≥2000mm 的开敞口：不是门，单列留痕
+    windows_out = [tuple(w) for w in fused.get("windows") or []]
+    matched_arc_ids = set()
+    stats = {"structure_gaps": len(gaps), "duplicates": len(removed),
+             "removed_noise": 0, "reclassified_window": 0,
+             "door_dual": 0, "door_single": 0, "door_plan_only": 0,
+             "opening": 0, "large_opening": 0}
+
+    for gi, gap in enumerate(kept):
+        x1, y1, x2, y2 = gap["seg"]
+        width = gap["hi"] - gap["lo"]
+        connects = rooms_near_gap(x1, y1, x2, y2, rooms)
+        nearest = _nearest_room_distance(x1, y1, x2, y2, rooms)
+        has_ticks = (round(x1), round(y1), round(x2), round(y2)) in tick_lookup
+
+        arc_hits = gap_arcs.get(gi, [])
+
+        base = {
+            "start": [round(x1, 1), round(y1, 1)],
+            "end": [round(x2, 1), round(y2, 1)],
+            "width_mm": round(width, 1),
+            "connects": connects,
+        }
+
+        if not arc_hits and nearest > _DOOR_FAR_MM:
+            removed.append({
+                "start": base["start"], "end": base["end"],
+                "reason": "距任何空间边界 %dmm（>%dmm）且无门扇弧线佐证："
+                          "判定为标注线/家具符号间隙，剔除。"
+                          % (round(nearest), _DOOR_FAR_MM),
+            })
+            stats["removed_noise"] += 1
+            continue
+
+        if arc_hits:
+            matched_arc_ids.update(arc_hits)
+            # 铰链距离 ≤500mm 的弧线簇 = 同一扇门（结构图与平面图的同一门
+            # 弧各一条，或同一门被描两次）；铰链分散的多条弧 = 结构图把相邻
+            # 多门并成一个宽缺口——按弧簇拆回独立的门，位置/宽度以弧线为准，
+            # 结构图缺口作墙体佐证。
+            clusters = []
+            for ai in arc_hits:
+                hinge = all_arcs[ai].get("hinge")
+                placed = False
+                for cluster in clusters:
+                    ref = all_arcs[cluster[0]].get("hinge")
+                    if hinge and ref and math.hypot(
+                            hinge[0] - ref[0], hinge[1] - ref[1]) <= 500.0:
+                        cluster.append(ai)
+                        placed = True
+                        break
+                if not placed:
+                    clusters.append([ai])
+            for cluster in clusters:
+                sources = {all_arcs[ai]["from_plan"] for ai in cluster}
+                both = sources == {"structure", "furnished"}
+                dual = "furnished" in sources
+                conf = 0.9 if both else (0.85 if dual else 0.8)
+                # 位置取平面图弧线（设计师表达的门位最准），无则结构图弧线
+                pick = next((ai for ai in cluster
+                             if all_arcs[ai]["from_plan"] == "furnished"),
+                            cluster[0])
+                arc = all_arcs[pick]
+                rec = dict(base)
+                rec.update({
+                    "type": "door",
+                    "confidence": conf,
+                    "source": "dual" if dual else "structure",
+                    "evidence": ["wall_gap"] + sorted({
+                        "door_arc_%s" % all_arcs[ai]["from_plan"]
+                        for ai in cluster}),
+                })
+                if arc.get("hinge") and arc.get("closed"):
+                    hx, hy = arc["hinge"]
+                    cx, cy = arc["closed"]
+                    rec["start"] = [round(hx, 1), round(hy, 1)]
+                    rec["end"] = [round(cx, 1), round(cy, 1)]
+                    rec["width_mm"] = round(arc.get("radius_mm") or width, 1)
+                    rec["connects"] = rooms_near_gap(hx, hy, cx, cy, rooms) \
+                        or connects
+                    if len(clusters) > 1:
+                        rec["note"] = ("结构图 %.0fmm 宽缺口由 %d 条门扇弧线佐证，"
+                                       "按弧线拆回独立的门（位置/宽度以弧线为准）。"
+                                       % (width, len(arc_hits)))
+                if not rec["connects"]:
+                    rec["note"] = (rec.get("note") or "") + \
+                        "连通房间未能从闭环判定，需人工核对。"
+                doors_out.append(rec)
+                stats["door_dual" if dual else "door_single"] += 1
+            continue
+
+        if has_ticks and width >= _WINDOW_TICK_MIN_W_MM:
+            windows_out.append((x1, y1, x2, y2))
+            removed.append({
+                "start": base["start"], "end": base["end"],
+                "reason": "两端有窗槛短档、宽度 %.0fmm 且无门扇弧线佐证："
+                          "由门洞清单改判为窗。" % width,
+            })
+            stats["reclassified_window"] += 1
+            continue
+
+        if not connects:
+            removed.append({
+                "start": base["start"], "end": base["end"],
+                "reason": "不邻接任何已识别空间（最近边界 %dmm）且无门扇弧线佐证："
+                          "疑似图面噪声洞口，剔除留痕。" % round(nearest),
+            })
+            stats["removed_noise"] += 1
+            continue
+
+        if width >= _LARGE_OPENING_MM:
+            large_openings.append(dict(base, **{
+                "type": "large_opening", "confidence": 0.4,
+                "source": "structure",
+                "evidence": ["wall_gap"] + (["jamb_ticks"] if has_ticks else []),
+                "note": "宽度 %.0fmm 超过门洞量级：按开敞连通口/飘窗面单列，"
+                        "不计入门集合。" % width,
+            }))
+            stats["large_opening"] += 1
+            continue
+
+        # 其余：有墙体缺口证据但无门扇佐证——诚实保留为 opening
+        rec = dict(base)
+        rec.update({
+            "type": "opening",
+            "confidence": 0.5 if width <= _DOOR_WIDTH_MAX_MM else 0.45,
+            "source": "structure",
+            "evidence": ["wall_gap"] + (["jamb_ticks"] if has_ticks else []),
+        })
+        doors_out.append(rec)
+        stats["opening"] += 1
+
+    # ---- 4) 仅平面图有弧线的门（结构图无对应缺口，如主卧门/室内分区门） ----
+    for ai, arc in enumerate(f_arcs):
+        global_idx = len(s_arcs) + ai
+        if global_idx in matched_arc_ids:
+            continue
+        hinge = arc.get("hinge")
+        closed = arc.get("closed")
+        if not (hinge and closed):
+            continue
+        connects = rooms_near_gap(hinge[0], hinge[1], closed[0], closed[1],
+                                  rooms, near=700.0)
+        note = "仅平面布置图有门扇弧线、结构图无对应缺口：按 plan_only 纳入，需现场确认。"
+        if not connects:
+            # 铰链落在某空间内部（如马桶间这类复合空间内的分区门）：
+            # 不是噪声，但也不能判定连通关系——如实标注。
+            container = None
+            for room in rooms:
+                poly = _poly(room)
+                if len(poly) >= 3 and _point_in_poly(hinge[0], hinge[1], poly):
+                    container = room.get("name") or "未命名"
+                    break
+            if not container:
+                continue  # 弧线不邻接也不属于任何空间：家具/符号残片，不采信
+            connects = [container]
+            note = ("仅平面布置图有门扇弧线，且位于“%s”内部（室内分区门，"
+                    "结构图无隔墙/缺口）：按 plan_only 纳入，连通关系需现场确认。"
+                    % container)
+        doors_out.append({
+            "type": "door",
+            "start": [round(hinge[0], 1), round(hinge[1], 1)],
+            "end": [round(closed[0], 1), round(closed[1], 1)],
+            "width_mm": round(arc.get("radius_mm") or 0.0, 1),
+            "connects": connects,
+            "confidence": 0.6,
+            "source": "plan_only",
+            "evidence": ["door_arc_furnished"],
+            "needs_site_verification": True,
+            "note": note,
+        })
+        stats["door_plan_only"] += 1
+
+    # ---- 5) 写回融合结果 ----
+    fused["doors"] = [tuple(d["start"] + d["end"]) for d in doors_out]
+    fused["windows"] = [(round(x1, 1), round(y1, 1), round(x2, 1), round(y2, 1))
+                        for x1, y1, x2, y2 in windows_out]
+    fused["door_count"] = len(fused["doors"])
+    fused["window_count"] = len(fused["windows"])
+    fused["door_details"] = doors_out
+    fused["removed_doors"] = removed
+    stats["converged_total"] = len(doors_out)
+    stats["windows_total"] = len(fused["windows"])
+    fusion["door_fusion"] = {
+        "method": "结构图缺口 × 双图门扇弧线互证（弧线=内容流级门符号提取），"
+                  "重复/噪声/判窗逐条留痕",
+        "stats": stats,
+        "doors": doors_out,
+        "removed_doors": removed,
+        "large_openings": large_openings,
+    }
+    fusion.setdefault("limitations_out", []).append(
+        "门洞语义收敛：结构图 %d 个缺口 → %d 个保留（door %d、opening %d）"
+        "+%d 个 plan_only 门；剔除 %d 个（双线重复 %d、标注噪声 %d）、"
+        "改判为窗 %d 个、超宽开敞口单列 %d 个。仅门扇弧线佐证的判 door，"
+        "其余如实标 opening。"
+        % (stats["structure_gaps"],
+           stats["door_dual"] + stats["door_single"] + stats["opening"],
+           stats["door_dual"] + stats["door_single"], stats["opening"],
+           stats["door_plan_only"],
+           stats["duplicates"] + stats["removed_noise"],
+           stats["duplicates"], stats["removed_noise"],
+           stats["reclassified_window"], stats["large_opening"]))
 
 
 def _label_structure_rooms(fused):

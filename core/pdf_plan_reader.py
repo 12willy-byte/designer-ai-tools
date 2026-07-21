@@ -71,6 +71,9 @@ def read_pdf_plan(pdf_path, scale=None, page_number=0):
         "window_count": 0,
         "detected_rooms": [],
         "outline": None,
+        "door_arcs": [],
+        "door_details": [],
+        "removed_doors": [],
         "confidence": 0.0,
         "limitations": [],
         "pdf": {
@@ -130,7 +133,7 @@ def read_pdf_plan(pdf_path, scale=None, page_number=0):
     if base["pdf"]["curve_count"]:
         base["limitations"].append(
             f"图纸包含 {base['pdf']['curve_count']} 条曲线路径：其中直线折线已切段提取，"
-            "圆弧部分（门弧等）不参与几何解析。")
+            "圆弧部分不参与墙体几何解析（门扇弧线另走内容流提取，作为门洞佐证）。")
 
     # ---------- 比例尺校准 ----------
     calib = _calibrate_scale(scale, raw_text, words_pt, segs_pt)
@@ -159,6 +162,29 @@ def read_pdf_plan(pdf_path, scale=None, page_number=0):
         "height": w["height"] * factor,
         "layer": "pdf_text",
     } for w in words_pt]
+
+    # ---------- 门扇弧线提取（内容流级，回收 pdfminer 丢失的符号实例） ----------
+    door_arcs = []
+    try:
+        from core.pdf_symbol_extract import extract_door_arcs
+        for arc in extract_door_arcs(pdf_path, page_number):
+            door_arcs.append({
+                "hinge": (round(arc["hinge"][0] * factor, 1),
+                          round(arc["hinge"][1] * factor, 1)),
+                "radius_mm": round(arc["radius_pt"] * factor, 1),
+                "leaf_tip": (round(arc["leaf_tip"][0] * factor, 1),
+                             round(arc["leaf_tip"][1] * factor, 1)),
+                "closed": (round(arc["closed"][0] * factor, 1),
+                           round(arc["closed"][1] * factor, 1)),
+                "sweep_deg": arc["sweep_deg"],
+            })
+    except Exception as exc:  # 弧线只是增强证据，失败不阻断几何解析
+        base["limitations"].append("门扇弧线提取失败（%s）：按无弧线证据处理。" % exc)
+    if door_arcs:
+        base["limitations"].append(
+            f"从内容流识别到 {len(door_arcs)} 条门扇摆动弧线（铰链+半径≈门宽），"
+            "作为门洞语义佐证。")
+    base["door_arcs"] = door_arcs
 
     # ---------- 线段分类 + 房间闭环（两遍法） ----------
     # 第一遍用全部线段；若识别出户型外轮廓，把外轮廓之外的标注线/延长线裁掉
@@ -199,6 +225,7 @@ def read_pdf_plan(pdf_path, scale=None, page_number=0):
 
     base["doors"] = result["doors"]
     base["windows"] = result["windows"]
+    base["jamb_tick_gaps"] = result.get("tick_gaps") or []
     base["pdf"]["unclassified_segment_count"] = result["unclassified_count"]
     base["limitations"].extend(result["notes"])
 
@@ -277,6 +304,14 @@ def read_pdf_plan(pdf_path, scale=None, page_number=0):
 
     base["detected_rooms"] = rooms
     base["outline"] = outline
+
+    # ---------- 门洞语义分级（单图版；双图互证收敛在 plan_fusion 完成） ----------
+    # doors 原始清单保持不变（零退化），door_details 是附加的语义视图：
+    # 有门扇弧线佐证 → door（高置信）；仅有缺口 → opening（低置信、诚实降级）；
+    # 不邻接任何空间的缺口标注为 unverified，供融合层剔除，单图路径不删。
+    base["door_details"] = build_door_details(
+        base["doors"], door_arcs, rooms, base["bounds"], calibrated,
+        tick_gaps=base["jamb_tick_gaps"])
 
     # ---------- 置信度与限制 ----------
     base["confidence"] = _overall_confidence(
@@ -674,6 +709,7 @@ def _classify_geometry(segs, calibrated, min_wall, gap_range, snap):
     windows = []
     virtual_count = 0
     virtual_segments = []
+    tick_gaps = []
     consumed_diagonals = set()
     for opening in openings:
         if opening["axis"] == "H":
@@ -710,10 +746,35 @@ def _classify_geometry(segs, calibrated, min_wall, gap_range, snap):
             if overlap >= 0.6 * opening["width"]:
                 symbol_segs.append(s)
 
+        # 窗槛短档（tick）：垂直于墙、跨过墙线、长度在墙厚量级（80–450mm）的
+        # 短档线。真实结构图的窗表达常是"墙打断 + 洞口两端各一道短档"，
+        # 没有覆盖洞口的平行长符号线——上面的平行线检测会漏。两端都有短档
+        # 才是窗；门洞也可能有门框短档，但门另有门扇斜线/弧线佐证。
+        tick_len = (80.0, 450.0) if calibrated else (6.0, 32.0)
+        tick_snap = 150.0 if calibrated else 10.0
+        cross = (60.0, 60.0) if calibrated else (4.0, 4.0)
+        ticks = [False, False]  # [起点端, 终点端]
+        for s in axis_segs:
+            if s[8] or s[0] == opening["axis"]:
+                continue
+            seg_len = s[3] - s[2]
+            if not (tick_len[0] <= seg_len <= tick_len[1]):
+                continue
+            if not (s[2] <= opening["line"] - cross[0]
+                    and s[3] >= opening["line"] + cross[1]):
+                continue  # 必须跨过墙线
+            for end_idx, end_pos in ((0, opening["gap_start"]), (1, opening["gap_end"])):
+                if abs(s[1] - end_pos) <= tick_snap:
+                    ticks[end_idx] = True
+        has_jamb_ticks = all(ticks)
+
         if opening.get("needs_proof") and not (symbol_segs or has_leaf):
             opening["rejected"] = True
             continue  # 纯单线簇的无佐证洞口：家具缺口/符号间隙，不桥接、不计数
 
+        if has_jamb_ticks:
+            tick_gaps.append((round(p1[0], 1), round(p1[1], 1),
+                              round(p2[0], 1), round(p2[1], 1)))
         if not exterior:
             doors.append((round(p1[0], 1), round(p1[1], 1), round(p2[0], 1), round(p2[1], 1)))
         elif symbol_segs:
@@ -793,6 +854,7 @@ def _classify_geometry(segs, calibrated, min_wall, gap_range, snap):
         "doors": doors,
         "windows": windows,
         "virtual_segments": virtual_segments,
+        "tick_gaps": tick_gaps,
         "unclassified_count": max(0, unclassified),
         "notes": notes,
     }
@@ -1342,3 +1404,151 @@ def _overall_confidence(calibrated, rooms, doors, windows, has_virtual=False):
         # 含虚拟桥接边界（推断的开口面）：诚实下调一档
         conf = max(0.5, conf - 0.05)
     return conf
+
+
+# ---------------------------------------------------------------- 门洞语义分级
+
+_DOOR_WIDTH_MM = 1300.0        # 门洞宽上限（超过按 opening）
+_BOUNDARY_NEAR_MM = 400.0      # 洞口贴近房间边界的判定距离
+_BOUNDARY_FAR_MM = 600.0       # 超过此距离不邻接任何空间：疑似标注线噪声
+_ARC_MATCH_MM = 700.0          # 门扇弧线与洞口的匹配距离
+
+
+def point_to_seg_dist(px, py, x1, y1, x2, y2):
+    """点到线段距离（供门弧/房间边界匹配复用）。"""
+    dx, dy = x2 - x1, y2 - y1
+    length = math.hypot(dx, dy)
+    if length == 0:
+        return math.hypot(px - x1, py - y1)
+    t = max(0.0, min(1.0, ((px - x1) * dx + (py - y1) * dy) / (length * length)))
+    return math.hypot(px - (x1 + t * dx), py - (y1 + t * dy))
+
+
+def arc_matches_gap(arc, x1, y1, x2, y2, tol=_ARC_MATCH_MM):
+    """门扇弧线是否佐证该洞口：铰链/门板端/关闭端任一点贴近洞口线段，
+    且弧半径与洞口宽度同量级。宽缺口（>1300mm）可能是相邻多门并入，
+    不套半径下限（由融合层按弧拆分）；半径超过洞口宽 2 倍则不可能。"""
+    width = math.hypot(x2 - x1, y2 - y1)
+    radius = arc.get("radius_mm") or 0.0
+    if width > 0 and radius:
+        if radius > 2.0 * width:
+            return False
+        if width <= _DOOR_WIDTH_MM and radius < 0.4 * width:
+            return False
+    for key in ("hinge", "leaf_tip", "closed"):
+        pt = arc.get(key)
+        if pt and point_to_seg_dist(pt[0], pt[1], x1, y1, x2, y2) <= tol:
+            return True
+    return False
+
+
+def arc_gap_distance(arc, x1, y1, x2, y2):
+    """弧线佐证点（铰链/门板端/关闭端）到洞口线段的最近距离。"""
+    best = None
+    for key in ("hinge", "leaf_tip", "closed"):
+        pt = arc.get(key)
+        if not pt:
+            continue
+        dist = point_to_seg_dist(pt[0], pt[1], x1, y1, x2, y2)
+        if best is None or dist < best:
+            best = dist
+    return best if best is not None else 1e9
+
+
+def rooms_near_gap(x1, y1, x2, y2, rooms, near=_BOUNDARY_NEAR_MM):
+    """洞口中点到各房间边界的最小距离 ≤near 的房间名列表（连通房间候选）。"""
+    mx, my = (x1 + x2) / 2, (y1 + y2) / 2
+    hits = []
+    for room in rooms:
+        poly = [(p["x"], p["y"]) for p in room.get("floor_points") or []]
+        if len(poly) < 3:
+            continue
+        best = min(
+            point_to_seg_dist(mx, my, ax, ay, bx, by)
+            for (ax, ay), (bx, by) in zip(poly, poly[1:] + poly[:1])
+        )
+        if best <= near:
+            hits.append((best, room.get("name") or "未命名"))
+    hits.sort()
+    return [name for _, name in hits]
+
+
+def build_door_details(doors, door_arcs, rooms, bounds, calibrated=True,
+                       tick_gaps=None):
+    """门洞语义分级（单图版）。
+
+    每个洞口产出 {type, start, end, width_mm, exterior, connects, evidence,
+    confidence}：
+    - 有门扇弧线佐证 → door（0.75）；
+    - 无弧线但宽度在门洞量级且邻接空间 → opening（0.5，诚实降级）；
+    - 宽度超过门洞量级 → opening（0.45）；
+    - 不邻接任何空间（>600mm）→ unverified（0.3，疑似标注线/符号间隙，
+      单图路径不删除，留给融合层判定）。
+    两端有窗槛短档的洞口在 evidence 记 jamb_ticks，供融合层判窗。
+    """
+    details = []
+    edge_tol = 300.0 if calibrated else 1e9
+    tick_set = set()
+    for tx1, ty1, tx2, ty2 in tick_gaps or []:
+        tick_set.add((round(tx1), round(ty1), round(tx2), round(ty2)))
+    for idx, (x1, y1, x2, y2) in enumerate(doors):
+        width = math.hypot(x2 - x1, y2 - y1)
+        exterior = False
+        if bounds and len(bounds) == 4:
+            exterior = min(
+                abs(y1 - bounds[1]), abs(y1 - bounds[3]),
+                abs(x1 - bounds[0]), abs(x1 - bounds[2]),
+            ) <= edge_tol
+        connects = rooms_near_gap(x1, y1, x2, y2, rooms)
+        arc = next((a for a in door_arcs
+                    if arc_matches_gap(a, x1, y1, x2, y2)), None)
+        evidence = ["wall_gap"]
+        if arc:
+            evidence.append("door_arc")
+        if exterior:
+            evidence.append("exterior_wall")
+        if (round(x1), round(y1), round(x2), round(y2)) in tick_set:
+            evidence.append("jamb_ticks")
+
+        if arc:
+            dtype, conf = "door", 0.75
+        elif not connects:
+            nearest = _nearest_room_distance(x1, y1, x2, y2, rooms)
+            if nearest > _BOUNDARY_FAR_MM:
+                dtype, conf = "unverified", 0.3
+                evidence.append("no_adjacent_room")
+            else:
+                dtype, conf = "opening", 0.45
+        elif width <= _DOOR_WIDTH_MM:
+            dtype, conf = "opening", 0.5
+        else:
+            dtype, conf = "opening", 0.45
+        details.append({
+            "id": "gap_%d" % idx,
+            "type": dtype,
+            "start": [round(x1, 1), round(y1, 1)],
+            "end": [round(x2, 1), round(y2, 1)],
+            "width_mm": round(width, 1),
+            "exterior": exterior,
+            "connects": connects,
+            "evidence": evidence,
+            "confidence": conf,
+            "source": "structure",
+        })
+    return details
+
+
+def _nearest_room_distance(x1, y1, x2, y2, rooms):
+    mx, my = (x1 + x2) / 2, (y1 + y2) / 2
+    best = None
+    for room in rooms:
+        poly = [(p["x"], p["y"]) for p in room.get("floor_points") or []]
+        if len(poly) < 3:
+            continue
+        dist = min(
+            point_to_seg_dist(mx, my, ax, ay, bx, by)
+            for (ax, ay), (bx, by) in zip(poly, poly[1:] + poly[:1])
+        )
+        if best is None or dist < best:
+            best = dist
+    return best if best is not None else 1e9

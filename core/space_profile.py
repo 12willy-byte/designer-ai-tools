@@ -338,7 +338,7 @@ def _merge_cad_geometry(geometry, cad_plan):
             "max_x": bounds[2],
             "max_y": bounds[3],
         }
-    merged["doors"] = _segments_to_items(cad_plan.get("doors") or [])
+    merged["doors"] = _door_items(cad_plan)
     merged["windows"] = _segments_to_items(cad_plan.get("windows") or [])
     if cad_plan.get("total_lines"):
         merged["notes"] = list(merged.get("notes") or []) + [f"CAD识别到 {cad_plan['total_lines']} 条线段"]
@@ -416,6 +416,33 @@ def _segments_to_items(segments):
         if len(seg) >= 4:
             items.append({"start": [seg[0], seg[1]], "end": [seg[2], seg[3]]})
     return items
+
+
+def _door_items(cad_plan):
+    """门条目：有 door_details（PDF 单图语义分级/双图融合）时透传
+    宽度、连通房间、类型与置信度；否则退化为纯线段（原行为）。"""
+    details = cad_plan.get("door_details") or []
+    if details:
+        items = []
+        for det in details:
+            item = {
+                "start": det.get("start"),
+                "end": det.get("end"),
+                "door_type": det.get("type"),
+                "confidence": det.get("confidence"),
+                "source": det.get("source") or cad_plan.get("source_type"),
+            }
+            if det.get("width_mm") is not None:
+                item["width_mm"] = det.get("width_mm")
+            if det.get("connects"):
+                item["connects_to"] = det.get("connects")
+            if det.get("needs_site_verification"):
+                item["needs_site_verification"] = True
+            if det.get("note"):
+                item["note"] = det.get("note")
+            items.append(item)
+        return items
+    return _segments_to_items(cad_plan.get("doors") or [])
 
 
 def _collect_constraints(conditions):
