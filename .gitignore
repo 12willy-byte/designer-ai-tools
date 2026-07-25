@@ -33,6 +33,11 @@ output/
 # Node
 node_modules/
 
+# Webapp（React 前端 + Flask 后端运行产物）
+webapp/dist/
+webapp/server/runs/
+webapp/server/__pycache__/
+
 # Temp/dev scripts
 _*.py
 
