@@ -151,6 +151,11 @@ def run_mvp_concept_package(
         output_pptx_path = os.path.join(out_dir, "概念方案.pptx")
     pptx_path = build_pptx(conditions_json_path, output_pptx_path)
 
+    # AI 输出防御留痕：本次运行中 chat_json 契约层发生的全部修复/降级事件
+    # 落盘为独立文件（诚实留痕：产物里能看到 AI 输出到底被改过什么）。
+    from core.output_defense import write_repair_log
+    repair_log_path = write_repair_log(os.path.join(out_dir, "ai_repair_log.json"))
+
     # M6 交付打包：把 M0–M5 分散产物一次性打包成可追溯的交付包。
     # 被闸门拦截的模块不伪造文件，只在 manifest / 交付说明中标注原因。
     delivery = build_delivery_package(
@@ -191,6 +196,7 @@ def run_mvp_concept_package(
         "blocked_modules": gate["blocked"],
         "delivery": delivery,
         "plan_fusion": (cad_plan or {}).get("fusion"),
+        "ai_repair_log": repair_log_path,
         "demo_mode": bool(palette.get("demo") or materials.get("demo") or layout.get("demo")),
     }
 

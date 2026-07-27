@@ -864,12 +864,9 @@ def _room_material_map(material_plan, room_facts, needs_profile):
 def _material_for(materials, slot, rtype, needs_profile, part):
     """Resolve the baseline entry + price hint for a room's floor/wall/ceiling."""
     wet = rtype in WET_ROOM_TYPES
+    # 槽位结构由 step3 的 chat_json 契约保证（统一防御层），这里不再点状兜底。
     raw = (materials.get(slot) or {})
-    if isinstance(raw, str):
-        # 真实模型偶尔把材质槽位返回成纯字符串（如 "木地板"）；
-        # 预算匹配只取 type 文本做关键词匹配，兜底包装不阻断流程。
-        raw = {"type": raw}
-    type_text = (raw.get("type") or "").strip()
+    type_text = (raw.get("type") or "").strip() if isinstance(raw, dict) else ""
     hint = _price_hint(raw.get("code") or "")
     if not type_text:
         if part == "floor":
@@ -994,6 +991,14 @@ _ENRICH_SYSTEM_PROMPT = """你是资深室内设计预算顾问。下面是一�
 2. 禁止编造品牌与型号；只能讨论材质档次/工艺/品类层面的取舍。
 3. room_notes 的 name 必须逐字匹配输入房间名；推断只能放入 extra_assumptions 且以"假设："开头。"""
 
+# 输出契约（core.output_defense）：文字建议字段的类型保障与降级。
+_ENRICH_CONTRACT = {
+    "allocation_advice": "str",
+    "saving_tips": "list",
+    "room_notes": [{"name": "str", "note": "str"}],
+    "extra_assumptions": "list",
+}
+
 
 def _enrich_with_ai(client, estimate, needs_profile):
     totals = estimate.get("totals") or {}
@@ -1019,14 +1024,16 @@ def _enrich_with_ai(client, estimate, needs_profile):
         ],
         "style": (needs_profile or {}).get("style_preferences") or {},
     }
+    # 统一防御层：文字建议各字段按契约归一化；模型输出彻底不可用时
+    # 安全降级为全默认（advice 为空即不附加 ai_advice），不崩任务。
     result = client.chat_json(
         _ENRICH_SYSTEM_PROMPT,
         json.dumps(payload, ensure_ascii=False),
         temperature=0.4,
         max_tokens=2000,
+        contract=_ENRICH_CONTRACT,
+        context="budget_estimate_enrich",
     )
-    if not isinstance(result, dict):
-        return
     advice = {}
     allocation = str(result.get("allocation_advice") or "").strip()
     if allocation:

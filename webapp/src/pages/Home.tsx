@@ -555,6 +555,12 @@ export default function Home() {
                 本交付包为<strong>提案初稿</strong>：预算为区间参考价（非报价单），布局为概念草案，
                 承重、水电、结构安全均未核实。所有内容需设计师复核后才能对客户使用。
               </p>
+              {summary.ai_repair_count > 0 && (
+                <p className="mt-1.5 text-xs text-slate-500">
+                  本次生成中 AI 输出共发生 {summary.ai_repair_count} 次修复/缺省补全/降级事件
+                  （明细见交付包 ai_repair_log.json）；涉及降级的部分已按规则兜底，不掩盖模型异常。
+                </p>
+              )}
             </div>
 
             <div className="flex justify-center pb-6">

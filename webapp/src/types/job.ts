@@ -35,6 +35,8 @@ export interface JobSummary {
   assumption_count: number
   delivery_file_count: number | null
   delivery_package_dir: string | null
+  ai_repair_count: number
+  ai_repairs: { context: string; path: string; action: string; detail: string }[]
   project_name: string | null
 }
 

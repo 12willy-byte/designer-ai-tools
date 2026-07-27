@@ -713,6 +713,14 @@ _ENRICH_SYSTEM_PROMPT = """你是资深室内设计师。下面是基于空间�
 3. 必须利用输入中的门窗位置/宽度与业主需求，不得泛泛而谈。
 4. 输入未直接给出的推断必须以"假设："开头，且只能放入 extra_assumptions。"""
 
+# 输出契约（core.output_defense）：文字增强字段的类型保障与降级。
+_ENRICH_CONTRACT = {
+    "circulation_overview": "str",
+    "design_highlights": "list",
+    "room_notes": [{"name": "str", "note": "str"}],
+    "extra_assumptions": "list",
+}
+
 
 def _enrich_with_ai(client, draft, room_facts, needs_profile):
     payload = {
@@ -744,14 +752,16 @@ def _enrich_with_ai(client, draft, room_facts, needs_profile):
         "needs_priorities": (needs_profile or {}).get("priorities") or [],
         "style": (needs_profile or {}).get("style_preferences") or {},
     }
+    # 统一防御层：增强字段按契约归一化；输出彻底不可用时安全降级
+    # 为全默认（规则草案原样保留），不崩任务。
     result = client.chat_json(
         _ENRICH_SYSTEM_PROMPT,
         json.dumps(payload, ensure_ascii=False),
         temperature=0.4,
         max_tokens=2500,
+        contract=_ENRICH_CONTRACT,
+        context="layout_draft_enrich",
     )
-    if not isinstance(result, dict):
-        return
     overview = str(result.get("circulation_overview") or "").strip()
     if overview:
         draft["circulation_overview"] = overview

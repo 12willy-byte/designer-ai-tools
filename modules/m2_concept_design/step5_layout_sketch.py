@@ -32,6 +32,22 @@ SYSTEM_PROMPT = """你是中国顶尖的室内设计布局规划专家。根据�
 2. 家具与材料只描述品类/尺寸/材质，禁止编造具体品牌名和型号；如举例必须标注"示例品牌，可替换"。
 3. 输入未直接给出的信息（家庭成员年龄推断、未确认的现场条件等）如需引用，以"假设："开头标注，不得与事实混排。"""
 
+# 输出契约（core.output_defense）：rooms 必须是对象列表、建议必须是列表；
+# 输出彻底不可用时安全降级为空结构（_write_dxf 对空 rooms 容忍），不崩任务。
+LAYOUT_CONTRACT = {
+    "layout_name": "str",
+    "description": "str",
+    "rooms": [{
+        "name": "str",
+        "analysis": "str",
+        "layout_suggestions": "list",
+        "furniture_suggestions": [{"item": "str", "suggested_size": "str", "material": "str"}],
+        "notes": "str",
+    }],
+    "circulation_analysis": "str",
+    "design_highlights": "list",
+}
+
 
 def generate_layout_draft(space_profile, needs_profile, gate=None, output_dir=None) -> dict:
     """M4 布局草案入口：闸门放行后由流水线调用。
@@ -80,7 +96,8 @@ def generate_layout(conditions_json_path: str, dxf_input_path: str = None, dxf_o
 
     spatial_text = "\n".join(lines)
     client = get_client()
-    data = client.chat_json(SYSTEM_PROMPT, spatial_text, temperature=0.6, max_tokens=3000)
+    data = client.chat_json(SYSTEM_PROMPT, spatial_text, temperature=0.6, max_tokens=3000,
+                            contract=LAYOUT_CONTRACT, context="step5_layout_sketch")
 
     # 写入 DXF
     if dxf_output_path:

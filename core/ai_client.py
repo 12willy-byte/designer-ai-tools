@@ -111,9 +111,26 @@ class AIClient:
             data = json.loads(resp.read())
         return data["choices"][0]["message"]["content"]
 
-    def chat_json(self, system_prompt, user_prompt=None, temperature=0.3, max_tokens=2000):
-        raw = self.chat(system_prompt, user_prompt, temperature=temperature, max_tokens=max_tokens)
-        return _parse_json_object(raw)
+    def chat_json(self, system_prompt, user_prompt=None, temperature=0.3,
+                  max_tokens=2000, contract=None, fallback=None, context=None):
+        """结构化 AI 调用的统一入口（真实与 demo 模式共用同一通道）。
+
+        contract/fallback/context 见 core.output_defense：模型输出不符合
+        契约时先归一化修复，修不了安全降级为 fallback，绝不抛异常；
+        全部修复/降级事件写入 output_defense.REPAIR_LOG。
+        """
+        from core.output_defense import defend, parse_loose_json, _log
+
+        raw = self.chat(system_prompt, user_prompt, temperature=temperature,
+                        max_tokens=max_tokens)
+        ctx = context or (str(system_prompt or "").splitlines() or [""])[0][:40]
+        try:
+            data = parse_loose_json(raw)
+        except ValueError:
+            _log(ctx, "$", "parse_failed",
+                 "输出不含可解析 JSON，走降级：%.80s" % (raw or ""))
+            data = None
+        return defend(data, contract, fallback=fallback, context=ctx)
 
     def vision(self, image_b64, prompt, max_tokens=1000):
         if self.demo_mode:

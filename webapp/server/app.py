@@ -240,6 +240,10 @@ def _build_summary(result, run_dir, user_budget_wan):
     delivery = result.get("delivery") or {}
     package_dir = delivery.get("package_dir")
 
+    # AI 输出防御留痕：修复/降级事件透出到结果页（含 demo 缺省补全）。
+    repair_doc = _read_json(result.get("ai_repair_log") or "", {}) or {}
+    repair_events = repair_doc.get("events") or []
+
     return {
         "mode": AI_MODE_LABEL,
         "demo_mode": bool(result.get("demo_mode")),
@@ -259,6 +263,8 @@ def _build_summary(result, run_dir, user_budget_wan):
         "assumption_count": len(assumptions),
         "delivery_file_count": delivery.get("file_count"),
         "delivery_package_dir": os.path.basename(package_dir) if package_dir else None,
+        "ai_repair_count": repair_doc.get("event_count") or len(repair_events),
+        "ai_repairs": repair_events[:50],
         "fusion": result.get("plan_fusion"),
         "project_name": (profile.get("project") or {}).get("name"),
     }

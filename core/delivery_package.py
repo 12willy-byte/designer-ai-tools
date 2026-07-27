@@ -88,6 +88,8 @@ _COPY_PLAN = [
     ("automation_gate.json", FACTS_DIR + "/automation_gate.json", "facts", "M2", True),
     ("constraint_report.json", FACTS_DIR + "/constraint_report.json", "facts", "M2", False),
     ("unified_questions_to_confirm.json", FACTS_DIR + "/unified_questions_to_confirm.json", "facts", "M2", False),
+    # AI 输出防御留痕：chat_json 契约层的修复/降级事件（无事件时 event_count=0）。
+    ("ai_repair_log.json", FACTS_DIR + "/ai_repair_log.json", "facts", "M3-M5", False),
 ]
 
 # 被闸门拦截的模块 -> 其产物文件名（用于确认包内没有伪造文件）

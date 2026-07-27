@@ -44,6 +44,24 @@ SYSTEM_PROMPT = """你是中国顶尖的室内设计材质专家。根据客户�
 4. 面积口径：引用总面积时以输入的建筑面积为准；如引用房间面积加总，必须注明"房间加总约XX㎡（不含公摊/墙体）"。"""
 
 
+# 输出契约：交给 core.output_defense 做归一化/降级。
+# "object:type" 表示该槽位必须是对象；模型若返回纯字符串（如 "木地板"），
+# 统一防御层会包装为 {"type": "木地板"} 并留痕（收口此前的点状防御 _as_material）。
+MATERIAL_CONTRACT = {
+    "design_concept": "str",
+    "materials": [{
+        "room": "str",
+        "floor": "object:type",
+        "wall": "object:type",
+        "feature_wall": "object:type",
+        "ceiling": "object:type",
+        "notes": "str",
+    }],
+    "global_recommendations": "object",
+    "assumptions": "list",
+}
+
+
 def hex_to_rgb(h):
     h = h.lstrip("#")
     return (int(h[0:2],16), int(h[2:4],16), int(h[4:6],16))
@@ -98,12 +116,13 @@ def generate_material_board(conditions_json_path):
     if floor_pref: prompt += "\n地面偏好: %s" % floor_pref
 
     client = get_client()
-    try:
-        data = client.chat_json(SYSTEM_PROMPT, prompt, temperature=0.6, max_tokens=2500)
-    except Exception as exc:
-        data = {"materials": [], "design_concept": "材质方案生成失败: %s" % exc}
-    if not isinstance(data.get("assumptions"), list):
-        data["assumptions"] = []
+    # 统一防御层：材质槽位必须是对象（真实模型曾把 floor/wall 返回纯字符串
+    # 导致渲染与预算匹配崩溃）；漂移由 output_defense 归一化并留痕。
+    data = client.chat_json(
+        SYSTEM_PROMPT, prompt, temperature=0.6, max_tokens=2500,
+        contract=MATERIAL_CONTRACT,
+        context="step3_material_board",
+    )
 
     # 生成材质板图片
     base_dir = os.path.dirname(os.path.abspath(conditions_json_path))
@@ -176,15 +195,8 @@ def render_material_board(data, output_dir):
                 return hex_to_rgb(val)
         return hex_to_rgb("#D0C8B8")
 
-    def _as_material(value):
-        # 真实模型返回的材质槽位偶尔是纯字符串（如 "木地板"）而非
-        # {"type": ...} 结构；渲染层兜底包成 dict，不让整张材质板崩溃。
-        if isinstance(value, dict):
-            return value
-        if isinstance(value, str) and value.strip():
-            return {"type": value.strip()}
-        return {}
-
+    # 槽位结构已由 chat_json 契约（MATERIAL_CONTRACT）保证为对象，
+    # 点状防御已收口到 core.output_defense 统一层。
     for i, mat in enumerate(materials):
         if not isinstance(mat, dict):
             continue
@@ -202,10 +214,10 @@ def render_material_board(data, output_dir):
 
         # 材质条目
         items = [
-            ("地面", _as_material(mat.get("floor"))),
-            ("墙面", _as_material(mat.get("wall"))),
-            ("背景墙", _as_material(mat.get("feature_wall"))),
-            ("天花", _as_material(mat.get("ceiling"))),
+            ("地面", mat.get("floor") or {}),
+            ("墙面", mat.get("wall") or {}),
+            ("背景墙", mat.get("feature_wall") or {}),
+            ("天花", mat.get("ceiling") or {}),
         ]
 
         iy = y + 50

@@ -27,6 +27,19 @@ SYSTEM_PROMPT = """你是中国顶尖的室内设计色彩专家。根据客户�
 2. wood_tone 与各字段只描述材质/色系，禁止编造具体品牌名和型号；如举例必须标注"示例品牌，可替换"。
 3. 输入未直接给出的信息如需推断，在 note 中以"假设："开头标注，不得与事实混排。"""
 
+# 输出契约（core.output_defense）：色块必须是对象、ratio 必须是数字
+# （模型常把 ratio 返回成 "60" 字符串，统一层自动转数值并留痕）。
+_COLOR_BLOCK = {"name": "str", "hex": "str", "ratio": "number", "usage": "str"}
+COLOR_CONTRACT = {
+    "scheme_name": "str",
+    "description": "str",
+    "base_color": dict(_COLOR_BLOCK),
+    "secondary_color": dict(_COLOR_BLOCK),
+    "accent_color": dict(_COLOR_BLOCK),
+    "wood_tone": "str",
+    "room_suggestions": [{"room": "str", "base": "str", "accent": "str", "note": "str"}],
+}
+
 
 def hex_to_rgb(h):
     h = h.lstrip("#")
@@ -48,7 +61,8 @@ def generate_color_palette(conditions_json_path: str) -> dict:
         prompt += "空间: %s\n" % ", ".join(r["name"] for r in space["rooms"])
 
     client = get_client()
-    data = client.chat_json(SYSTEM_PROMPT, prompt, temperature=0.6, max_tokens=2000)
+    data = client.chat_json(SYSTEM_PROMPT, prompt, temperature=0.6, max_tokens=2000,
+                            contract=COLOR_CONTRACT, context="step2_color_palette")
 
     base_dir = os.path.dirname(os.path.abspath(conditions_json_path))
     out_dir = os.path.join(base_dir, "concept_output")
