@@ -150,7 +150,30 @@ class AIClient:
 
     def _mock_chat(self, prompt):
         lower = prompt.lower()
-        if "色彩" in prompt or "color" in lower:
+        # enrich 调用（布局/预算文字增强）专用 mock：字段与各自契约对齐，
+        # 避免每次 demo 运行都产生 missing_key 补全噪声。
+        if "circulation_overview" in prompt or "布局草案" in prompt:
+            return json.dumps({
+                "demo": True,
+                "provider": self.provider,
+                "circulation_overview": "演示动线说明：主通道连续贯通，动静分区清晰，具体以规则草案为准。",
+                "design_highlights": ["演示亮点：通透动线", "演示亮点：集成收纳"],
+                "room_notes": [],
+                "extra_assumptions": [],
+            }, ensure_ascii=False)
+        if "allocation_advice" in prompt or "预算顾问" in prompt:
+            return json.dumps({
+                "demo": True,
+                "provider": self.provider,
+                "allocation_advice": "演示建议：优先保障隐蔽工程与高频使用空间，装饰性项目后置。",
+                "saving_tips": ["演示建议：主材选基础款，升级款局部点缀"],
+                "room_notes": [],
+                "extra_assumptions": [],
+            }, ensure_ascii=False)
+        # 分支锚点用各 prompt 的独有标识，避免泛词误路由：
+        # - 色彩分支不能只查 "color"（step3 的材质 JSON 示例里也有 color 字段，
+        #   曾导致材质 mock 长期被色彩 mock 顶替，demo 材质板一直是空结构）。
+        if "scheme_name" in prompt or "色彩" in prompt:
             return json.dumps({
                 "demo": True,
                 "provider": self.provider,
@@ -162,7 +185,23 @@ class AIClient:
                 "wood_tone": "浅橡木或白橡木",
                 "room_suggestions": [{"room": "客厅", "base": "#F5F0E8", "accent": "#7F9AA8", "note": "保持明亮通透"}],
             }, ensure_ascii=False)
-        if "材质" in prompt or "material" in lower:
+        if "布局" in prompt or "layout" in lower:
+            return json.dumps({
+                "demo": True,
+                "provider": self.provider,
+                "layout_name": "演示布局方案",
+                "description": "保留主要动线，以客餐厅连续界面提升空间感。",
+                "rooms": [{
+                    "name": "客厅",
+                    "analysis": "作为家庭公共活动核心，需要兼顾会客、观影和收纳。",
+                    "layout_suggestions": ["沙发靠长墙布置", "电视墙整合收纳", "餐客厅之间保留连续通道"],
+                    "furniture_suggestions": [{"item": "三人沙发", "suggested_size": "2200x900", "material": "布艺"}],
+                    "notes": "演示数据，需结合实际结构复核。",
+                }],
+                "circulation_analysis": "主通道保持连续，避免大件家具压缩入口。",
+                "design_highlights": ["通透动线", "集成收纳"],
+            }, ensure_ascii=False)
+        if "global_recommendations" in prompt or "材质" in prompt or "material" in lower:
             return json.dumps({
                 "demo": True,
                 "provider": self.provider,
@@ -181,22 +220,6 @@ class AIClient:
                     "baseboard": "同门套或墙面同色",
                 },
                 "assumptions": ["假设：演示数据，家庭成员年龄、品牌与价位档需设计师复核。"],
-            }, ensure_ascii=False)
-        if "布局" in prompt or "layout" in lower:
-            return json.dumps({
-                "demo": True,
-                "provider": self.provider,
-                "layout_name": "演示布局方案",
-                "description": "保留主要动线，以客餐厅连续界面提升空间感。",
-                "rooms": [{
-                    "name": "客厅",
-                    "analysis": "作为家庭公共活动核心，需要兼顾会客、观影和收纳。",
-                    "layout_suggestions": ["沙发靠长墙布置", "电视墙整合收纳", "餐客厅之间保留连续通道"],
-                    "furniture_suggestions": [{"item": "三人沙发", "suggested_size": "2200x900", "material": "布艺"}],
-                    "notes": "演示数据，需结合实际结构复核。",
-                }],
-                "circulation_analysis": "主通道保持连续，避免大件家具压缩入口。",
-                "design_highlights": ["通透动线", "集成收纳"],
             }, ensure_ascii=False)
         if "room" in lower and ("furniture" in lower or "place" in lower):
             return json.dumps([{

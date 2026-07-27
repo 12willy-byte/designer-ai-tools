@@ -701,11 +701,15 @@ def _clamp_item(item, room, assumptions):
 _ENRICH_SYSTEM_PROMPT = """你是资深室内设计师。下面是基于空间事实（房间尺寸/门窗位置/相邻关系）由规则引擎生成的布局草案 JSON。
 请在不改变任何房间、家具名称与尺寸的前提下，只输出文字增强 JSON：
 {
-  "circulation_overview": "整体动线说明，≤120字，必须引用具体房间与门的连通关系",
-  "design_highlights": ["结合业主需求的亮点，每条≤40字"],
-  "room_notes": [{"name": "房间名（必须与输入完全一致）", "note": "该房间布局要点，≤80字，需引用门窗位置"}],
+  "circulation_overview": "整体动线说明，≤100字，必须引用具体房间与门的连通关系",
+  "design_highlights": ["结合业主需求的亮点，最多3条，每条≤30字"],
+  "room_notes": [{"name": "房间名（必须与输入完全一致）", "note": "该房间布局要点，≤60字，需引用门窗位置"}],
   "extra_assumptions": ["仅当引入了输入之外的推断时填写，且必须以\\"假设：\\"开头"]
 }
+
+【精简输出——必须严格遵守】
+- 只输出上述 JSON，不要任何前后解说；room_notes 不必每个房间都写，只写最有价值的 3-5 个；
+- 所有文字从简，优先保证 JSON 完整闭合，宁少勿滥。
 
 【事实与假设边界 — 必须严格遵守】
 1. 禁止新增、合并或删除房间；room_notes 的 name 必须逐字匹配输入房间名。
@@ -754,11 +758,13 @@ def _enrich_with_ai(client, draft, room_facts, needs_profile):
     }
     # 统一防御层：增强字段按契约归一化；输出彻底不可用时安全降级
     # 为全默认（规则草案原样保留），不崩任务。
+    # max_tokens=5000：实测 2500 在房间较多时会被截断（JSON 不闭合触发
+    # parse_failed 降级）；prompt 同步要求精简输出，双管齐下。
     result = client.chat_json(
         _ENRICH_SYSTEM_PROMPT,
         json.dumps(payload, ensure_ascii=False),
         temperature=0.4,
-        max_tokens=2500,
+        max_tokens=5000,
         contract=_ENRICH_CONTRACT,
         context="layout_draft_enrich",
     )

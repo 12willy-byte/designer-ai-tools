@@ -1030,7 +1030,7 @@ def _enrich_with_ai(client, estimate, needs_profile):
         _ENRICH_SYSTEM_PROMPT,
         json.dumps(payload, ensure_ascii=False),
         temperature=0.4,
-        max_tokens=2000,
+        max_tokens=3000,
         contract=_ENRICH_CONTRACT,
         context="budget_estimate_enrich",
     )

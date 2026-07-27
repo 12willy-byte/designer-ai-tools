@@ -55,15 +55,26 @@ interface PdfSlotProps {
   hint: string
   file: File | null
   onFile: (f: File | null) => void
+  onReject: (msg: string) => void
 }
 
-function PdfDropzone({ title, required, hint, file, onFile }: PdfSlotProps) {
+const MAX_UPLOAD_BYTES = 50 * 1024 * 1024
+
+function PdfDropzone({ title, required, hint, file, onFile, onReject }: PdfSlotProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
 
   const pick = (f: File | undefined | null) => {
     if (!f) return
-    if (!f.name.toLowerCase().endsWith('.pdf')) return
+    // 前端先校验，给用户即时反馈（后端仍有 50MB/扩展名硬校验兜底）
+    if (!f.name.toLowerCase().endsWith('.pdf')) {
+      onReject(`「${f.name}」不是 PDF 文件。请上传 CAD 导出的矢量 PDF（拍照/扫描件无法识别）。`)
+      return
+    }
+    if (f.size > MAX_UPLOAD_BYTES) {
+      onReject(`「${f.name}」${(f.size / 1024 / 1024).toFixed(1)}MB，超过 50MB 上限，请导出更精简的 PDF。`)
+      return
+    }
     onFile(f)
   }
   const onDrop = (e: DragEvent) => {
@@ -280,13 +291,15 @@ export default function Home() {
                 required
                 hint="必传：结构图最准；只有平面布置图也能直接用"
                 file={structurePdf}
-                onFile={setStructurePdf}
+                onFile={(f) => { setStructurePdf(f); if (f) setError(null) }}
+                onReject={setError}
               />
               <PdfDropzone
                 title="第二份图纸（可选）"
                 hint="有就传：两份图交叉验证，房间与门洞识别更准"
                 file={furnishedPdf}
-                onFile={setFurnishedPdf}
+                onFile={(f) => { setFurnishedPdf(f); if (f) setError(null) }}
+                onReject={setError}
               />
               <div className="flex justify-end">
                 <Button disabled={!structurePdf} onClick={() => setStep(2)}>
@@ -373,34 +386,43 @@ export default function Home() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Loader2 className="h-5 w-5 animate-spin text-slate-600" />
-                正在生成概念提案
+                {job?.status === 'failed'
+                  ? <AlertTriangle className="h-5 w-5 text-red-500" />
+                  : <Loader2 className="h-5 w-5 animate-spin text-slate-600" />}
+                {job?.status === 'failed' ? '生成失败' : '正在生成概念提案'}
               </CardTitle>
               <CardDescription className="flex items-center gap-2">
-                已用时 {elapsed} 秒，通常需要 1–3 分钟 <ModeBadge mode={job?.mode ?? null} />
+                {job?.status === 'failed'
+                  ? '图纸或需求未被成功处理，请根据下方原因调整后重试'
+                  : `已用时 ${elapsed} 秒，通常需要 1–3 分钟`}
+                <ModeBadge mode={job?.mode ?? null} />
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Progress value={((stageIndex + 1) / PIPELINE_STEPS.length) * 100} />
-              <ol className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                {PIPELINE_STEPS.map((s, i) => {
-                  const done = i < stageIndex
-                  const active = i === stageIndex
-                  return (
-                    <li key={s} className={`flex items-center gap-2 rounded-md border px-3 py-2 text-xs ${
-                      done ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                        : active ? 'border-slate-400 bg-white font-medium text-slate-900'
-                          : 'border-slate-200 text-slate-400'
-                    }`}>
-                      {done ? <CheckCircle2 className="h-3.5 w-3.5" />
-                        : active ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          : <CircleDashed className="h-3.5 w-3.5" />}
-                      {s}
-                    </li>
-                  )
-                })}
-              </ol>
-              <p className="text-xs text-slate-400">阶段进度为按时间的示意展示，实际以后台任务状态为准。</p>
+              {job?.status !== 'failed' && (
+                <>
+                  <Progress value={((stageIndex + 1) / PIPELINE_STEPS.length) * 100} />
+                  <ol className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {PIPELINE_STEPS.map((s, i) => {
+                      const done = i < stageIndex
+                      const active = i === stageIndex
+                      return (
+                        <li key={s} className={`flex items-center gap-2 rounded-md border px-3 py-2 text-xs ${
+                          done ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                            : active ? 'border-slate-400 bg-white font-medium text-slate-900'
+                              : 'border-slate-200 text-slate-400'
+                        }`}>
+                          {done ? <CheckCircle2 className="h-3.5 w-3.5" />
+                            : active ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              : <CircleDashed className="h-3.5 w-3.5" />}
+                          {s}
+                        </li>
+                      )
+                    })}
+                  </ol>
+                  <p className="text-xs text-slate-400">阶段进度为按时间的示意展示，实际以后台任务状态为准。</p>
+                </>
+              )}
               {job?.status === 'failed' && (
                 <Button variant="outline" onClick={reset}>返回重新开始</Button>
               )}
