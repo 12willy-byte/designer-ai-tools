@@ -176,7 +176,18 @@ def render_material_board(data, output_dir):
                 return hex_to_rgb(val)
         return hex_to_rgb("#D0C8B8")
 
+    def _as_material(value):
+        # 真实模型返回的材质槽位偶尔是纯字符串（如 "木地板"）而非
+        # {"type": ...} 结构；渲染层兜底包成 dict，不让整张材质板崩溃。
+        if isinstance(value, dict):
+            return value
+        if isinstance(value, str) and value.strip():
+            return {"type": value.strip()}
+        return {}
+
     for i, mat in enumerate(materials):
+        if not isinstance(mat, dict):
+            continue
         col = i % cols
         row = i // cols
         x = 40 + col * (card_w + gap_x)
@@ -191,10 +202,10 @@ def render_material_board(data, output_dir):
 
         # 材质条目
         items = [
-            ("地面", mat.get("floor",{})),
-            ("墙面", mat.get("wall",{})),
-            ("背景墙", mat.get("feature_wall",{})),
-            ("天花", mat.get("ceiling",{})),
+            ("地面", _as_material(mat.get("floor"))),
+            ("墙面", _as_material(mat.get("wall"))),
+            ("背景墙", _as_material(mat.get("feature_wall"))),
+            ("天花", _as_material(mat.get("ceiling"))),
         ]
 
         iy = y + 50

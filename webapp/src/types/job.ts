@@ -25,6 +25,8 @@ export interface JobSummary {
   budget_low: number | null
   budget_high: number | null
   user_budget_wan: number | null
+  layout_mode: string | null
+  degraded_reasons: string[]
   allowed_modules: string[]
   blocked_modules: BlockedModule[]
   questions: QuestionItem[]

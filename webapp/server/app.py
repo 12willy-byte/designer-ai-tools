@@ -165,7 +165,7 @@ def _parse_plans(structure_pdf, furnished_pdf, ceiling_mm):
 
     plan = read_pdf_plan(structure_pdf)
     if not plan.get("accepted"):
-        raise ValueError("结构图 PDF 无法作为空间输入：" +
+        raise ValueError("图纸 PDF 无法作为空间输入：" +
                          "；".join(plan.get("limitations") or ["未知原因"]))
     if furnished_pdf:
         furnished = read_pdf_plan(furnished_pdf)
@@ -206,6 +206,17 @@ def _build_summary(result, run_dir, user_budget_wan):
         budget_low = totals.get("low")
         budget_high = totals.get("high")
 
+    # 布局模式：降级布局（draft_degraded）必须在结果页如实透出——
+    # 用户需要知道"为什么布局只是讨论稿"（降级原因逐条列出）。
+    layout_mode = None
+    degraded_reasons = []
+    layout_doc = _read_json(result.get("layout_json") or "", {}) or {}
+    if layout_doc.get("status") == "draft":
+        layout_mode = layout_doc.get("layout_mode") or "draft"
+        degraded_reasons = layout_doc.get("degraded_reasons") or []
+    elif layout_doc.get("status"):
+        layout_mode = layout_doc.get("status")
+
     questions = _read_json(result.get("unified_questions_to_confirm") or "", []) or []
     questions_out = [
         {
@@ -238,6 +249,8 @@ def _build_summary(result, run_dir, user_budget_wan):
         "budget_low": budget_low,
         "budget_high": budget_high,
         "user_budget_wan": user_budget_wan,
+        "layout_mode": layout_mode,
+        "degraded_reasons": degraded_reasons,
         "allowed_modules": result.get("allowed_modules") or [],
         "blocked_modules": blocked,
         "questions": questions_out,

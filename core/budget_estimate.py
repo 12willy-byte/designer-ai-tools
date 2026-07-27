@@ -865,6 +865,10 @@ def _material_for(materials, slot, rtype, needs_profile, part):
     """Resolve the baseline entry + price hint for a room's floor/wall/ceiling."""
     wet = rtype in WET_ROOM_TYPES
     raw = (materials.get(slot) or {})
+    if isinstance(raw, str):
+        # 真实模型偶尔把材质槽位返回成纯字符串（如 "木地板"）；
+        # 预算匹配只取 type 文本做关键词匹配，兜底包装不阻断流程。
+        raw = {"type": raw}
     type_text = (raw.get("type") or "").strip()
     hint = _price_hint(raw.get("code") or "")
     if not type_text:

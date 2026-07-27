@@ -37,7 +37,7 @@ const FAMILY_OPTIONS = [
   { value: 'rental', label: '出租房' },
 ]
 
-const STYLE_OPTIONS = ['现代简约', '原木', '奶油', '中古', '其他']
+const STYLE_OPTIONS = ['现代简约', '简约实用', '原木', '奶油', '中古', '其他']
 
 function ModeBadge({ mode }: { mode: 'real' | 'demo' | null }) {
   if (mode === 'real') {
@@ -214,10 +214,11 @@ export default function Home() {
   const userBudgetYuan = summary?.user_budget_wan ? summary.user_budget_wan * 10000 : null
   const budgetVerdict = (() => {
     if (!summary || userBudgetYuan == null || summary.budget_low == null || summary.budget_high == null) return null
-    if (userBudgetYuan < summary.budget_low) return { text: '低于估算区间下限，预算偏紧', tone: 'text-red-600' }
-    if (userBudgetYuan > summary.budget_high) return { text: '高于估算区间上限，预算充裕', tone: 'text-emerald-600' }
-    return { text: '落在估算区间内，预算基本匹配', tone: 'text-slate-700' }
+    if (userBudgetYuan < summary.budget_low) return { level: 'over' as const, text: '预算低于估算区间下限，可能无法覆盖基础施工与主材，建议先压减非必要项目或与业主调整预期' }
+    if (userBudgetYuan > summary.budget_high) return { level: 'loose' as const, text: '预算高于估算区间上限，较为充裕' }
+    return { level: 'fit' as const, text: '预算落在估算区间内，基本匹配' }
   })()
+  const layoutDegraded = summary?.layout_mode === 'draft_degraded'
 
   const stepTitles = ['上传图纸', '填写需求', '生成中', '交付结果']
 
@@ -275,15 +276,15 @@ export default function Home() {
             </CardHeader>
             <CardContent className="space-y-4">
               <PdfDropzone
-                title="结构图（毛坯原始图）"
+                title="户型图纸（结构图或布置图）"
                 required
-                hint="必传：用于识别墙体、门洞与空间边界"
+                hint="必传：结构图最准；只有平面布置图也能直接用"
                 file={structurePdf}
                 onFile={setStructurePdf}
               />
               <PdfDropzone
-                title="平面布置图（可选）"
-                hint="有就传：双图交叉验证，房间识别更准"
+                title="第二份图纸（可选）"
+                hint="有就传：两份图交叉验证，房间与门洞识别更准"
                 file={furnishedPdf}
                 onFile={setFurnishedPdf}
               />
@@ -446,9 +447,34 @@ export default function Home() {
                   </div>
                 </div>
                 {summary.user_budget_wan != null && budgetVerdict && (
-                  <p className={`text-sm ${budgetVerdict.tone}`}>
-                    业主预算 {summary.user_budget_wan} 万元：{budgetVerdict.text}
-                  </p>
+                  <div className={`flex items-start gap-2 rounded-lg border p-3 text-sm ${
+                    budgetVerdict.level === 'over'
+                      ? 'border-red-300 bg-red-50 text-red-800'
+                      : budgetVerdict.level === 'loose'
+                        ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                        : 'border-slate-200 bg-white text-slate-700'
+                  }`}>
+                    {budgetVerdict.level === 'over' && <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />}
+                    {budgetVerdict.level === 'fit' && <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />}
+                    <p>
+                      <strong>预算比对：</strong>业主预算 {summary.user_budget_wan} 万元，
+                      估算区间 {summary.budget_low != null && summary.budget_high != null
+                        ? `${(summary.budget_low / 10000).toFixed(1)}–${(summary.budget_high / 10000).toFixed(1)} 万元`
+                        : '未生成'}。{budgetVerdict.text}
+                    </p>
+                  </div>
+                )}
+                {layoutDegraded && (
+                  <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+                    <p className="flex items-center gap-2 font-medium">
+                      <AlertTriangle className="h-4 w-4 shrink-0" />
+                      布局为降级讨论稿：只能用于讨论空间关系与家具尺度
+                    </p>
+                    <ul className="mt-1.5 list-disc space-y-0.5 pl-6 text-xs">
+                      {(summary.degraded_reasons || []).map((r) => <li key={r}>{r}</li>)}
+                    </ul>
+                    <p className="mt-1.5 text-xs">原因：图纸缺少采光面等关键事实，系统按规则主动降级而不是猜测。补充窗户事实后重新生成即可升级为正式草案。</p>
+                  </div>
                 )}
                 {summary.room_names.length > 0 && (
                   <div className="flex flex-wrap gap-1.5">
